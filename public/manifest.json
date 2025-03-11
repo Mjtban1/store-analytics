@@ -1,7 +1,7 @@
 {
-  "short_name": "Analytics",
-  "name": "Store Analytics",
-  "description": "Store Analytics Application",
+  "short_name": "التحليلات",
+  "name": "تحليلات المتجر",
+  "description": "تطبيق تحليلات المتجر",
   "start_url": ".",
   "display": "standalone",
   "orientation": "portrait",
@@ -9,15 +9,9 @@
   "background_color": "#ffffff",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>",
-      "type": "image/svg+xml",
-      "sizes": "192x192",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>",
-      "type": "image/svg+xml",
-      "sizes": "512x512",
+      "src": "apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]
