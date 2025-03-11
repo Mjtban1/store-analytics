@@ -5,7 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "start": "cross-env NODE_OPTIONS=--openssl-legacy-provider react-scripts start",
-    "build": "GENERATE_SOURCEMAP=false react-scripts build",
+    "build": "cross-env NODE_OPTIONS=--openssl-legacy-provider react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -58,7 +58,8 @@
     ]
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": "16.x",
+    "npm": "8.x"
   },
   "resolutions": {
     "@babel/core": "^7.23.3",
