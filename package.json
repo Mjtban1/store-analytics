@@ -58,8 +58,8 @@
     ]
   },
   "engines": {
-    "node": "16.x",
-    "npm": "8.x"
+    "node": "18.x",
+    "npm": "9.x"
   },
   "resolutions": {
     "@babel/core": "^7.23.3",
