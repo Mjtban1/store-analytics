@@ -48,6 +48,18 @@ const Analytics = () => {
                     </div>
                 </div>
             );
+        } else if (['علي', 'على', 'ali'].includes(lowerName)) {
+            return (
+                <div className="welcome-special ali-animation">
+                    <h1>🌟 مرحباً علاويييي 🌟</h1>
+                    <div className="floating-emojis">
+                        <span>💪</span>
+                        <span>👑</span>
+                        <span>🎉</span>
+                        <span>⚡</span>
+                    </div>
+                </div>
+            );
         }
         return <h1>مرحباً {name}!</h1>;
     };
