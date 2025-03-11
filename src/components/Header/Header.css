@@ -1,0 +1,8 @@
+.header {
+    background-color: #4CAF50; /* Green background */
+    color: white; /* White text */
+    padding: 15px; /* Some padding */
+    text-align: center; /* Centered text */
+    font-size: 24px; /* Larger font size */
+    font-family: 'Arial', sans-serif; /* Font style */
+}

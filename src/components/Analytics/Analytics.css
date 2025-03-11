@@ -1,0 +1,62 @@
+.analytics-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #f5f5f5;
+    font-family: 'Arial', sans-serif;
+}
+
+.analytics-title {
+    font-size: 3rem;
+    color: #333;
+    text-align: center;
+    font-weight: bold;
+}
+
+.name-form {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.name-input {
+    padding: 10px;
+    font-size: 16px;
+    border: 2px solid #4CAF50;
+    border-radius: 4px;
+    outline: none;
+}
+
+.submit-btn {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.submit-btn:hover {
+    background-color: #45a049;
+}
+
+.welcome-container {
+    text-align: center;
+}
+
+.remove-btn {
+    margin-top: 20px;
+    padding: 10px 20px;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.remove-btn:hover {
+    background-color: #c82333;
+}

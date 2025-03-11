@@ -1,0 +1,25 @@
+/* App.css file for styling the main App component */
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.analytics-title {
+    font-size: 2.5rem;
+    color: #4CAF50;
+    text-align: center;
+    margin-top: 20px;
+}
