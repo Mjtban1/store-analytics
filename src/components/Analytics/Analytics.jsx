@@ -22,6 +22,36 @@ const Analytics = () => {
         fetchName();
     }, [deviceId]);
 
+    const getWelcomeMessage = (name) => {
+        const lowerName = name.toLowerCase();
+        if (['شمس', 'شموس', 'shams', 'shmoos'].includes(lowerName)) {
+            return (
+                <div className="welcome-special shams-animation">
+                    <h1>✨ شموسسس الغالي اهلا ✨</h1>
+                    <div className="floating-emojis">
+                        <span>🌟</span>
+                        <span>⭐</span>
+                        <span>💫</span>
+                        <span>🌞</span>
+                    </div>
+                </div>
+            );
+        } else if (['بنين', 'بنونه', 'baneen'].includes(lowerName)) {
+            return (
+                <div className="welcome-special baneen-animation">
+                    <h1>💝 هلاوووو بنونه 💝</h1>
+                    <div className="floating-emojis">
+                        <span>🎀</span>
+                        <span>💖</span>
+                        <span>✨</span>
+                        <span>🦋</span>
+                    </div>
+                </div>
+            );
+        }
+        return <h1>مرحباً {name}!</h1>;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
@@ -58,14 +88,14 @@ const Analytics = () => {
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="Enter your name"
-                        className="name-input"
+                        placeholder="أدخل اسمك هنا"
+                        className="name-input arabic-input"
                     />
-                    <button type="submit" className="submit-btn">OK</button>
+                    <button type="submit" className="submit-btn">تم</button>
                 </form>
             ) : (
                 <div className="welcome-container">
-                    <h1>مرحباً {savedName}!</h1>
+                    {getWelcomeMessage(savedName)}
                     <button onClick={handleRemove} className="remove-btn">إزالة الاسم</button>
                 </div>
             )}
