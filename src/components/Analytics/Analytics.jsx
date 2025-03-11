@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
 import { collection, addDoc, getDocs, query, where, deleteDoc, doc } from 'firebase/firestore';
 import { getDeviceId } from '../../utils/deviceId';
+import { requestNotificationPermission } from '../../utils/notifications';
 import './Analytics.css';
 
 const Analytics = () => {
@@ -20,6 +21,7 @@ const Analytics = () => {
             });
         };
         fetchName();
+        requestNotificationPermission();
     }, [deviceId]);
 
     const getWelcomeMessage = (name) => {
