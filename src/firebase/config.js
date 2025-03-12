@@ -6,13 +6,12 @@ import { getMessaging } from "firebase/messaging";
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  storageBucket: "app-anylasis.appspot.com", // تحديث هذا
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_FIREBASE_APP_ID,
-  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
+  apiKey: "AIzaSyBwTFRLvXDLLmrj5MfnXhR4KZW0JQdau3w",
+  authDomain: "app-anylasis.firebaseapp.com",
+  projectId: "app-anylasis",
+  storageBucket: "app-anylasis.appspot.com",
+  messagingSenderId: "302260206820",
+  appId: "1:302260206820:web:8fbf734cacb3be3dd400f1"
 };
 
 // Initialize Firebase
