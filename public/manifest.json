@@ -2,12 +2,13 @@
   "short_name": "التحليلات",
   "name": "تحليلات المتجر",
   "description": "تطبيق تحليلات المتجر",
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
   "theme_color": "#4CAF50",
   "background_color": "#ffffff",
   "gcm_sender_id": "302260206820",
+  "permissions": ["notifications"],
   "icons": [
     {
       "src": "apple-touch-icon.png",

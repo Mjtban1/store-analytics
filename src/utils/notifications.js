@@ -12,27 +12,33 @@ const notifications = [
 
 export const requestNotificationPermission = async () => {
     try {
+        if (!('serviceWorker' in navigator)) {
+            console.error('Service Worker not supported');
+            return;
+        }
+
+        await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
             const messaging = getMessaging();
             
             const currentToken = await getToken(messaging, {
-                vapidKey: process.env.REACT_APP_FIREBASE_VAPID_KEY
+                vapidKey: process.env.REACT_APP_FIREBASE_VAPID_KEY,
+                serviceWorkerRegistration: await navigator.serviceWorker.ready
             });
             
             if (currentToken) {
-                console.log('Token:', currentToken); // اطبع التوكن للتحقق
+                console.log('FCM Token:', currentToken);
                 await saveTokenToFirebase(currentToken);
                 setupForegroundNotifications(messaging);
                 startPeriodicNotifications();
             } else {
-                console.log('No registration token available');
+                console.error('No token received');
             }
-        } else {
-            console.log('Permission denied');
         }
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Notification setup error:', error);
     }
 };
 
