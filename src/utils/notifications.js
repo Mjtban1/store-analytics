@@ -1,6 +1,6 @@
-import { getMessaging, getToken, onMessage } from "firebase/messaging";
-import { db } from '../firebase/config';
+import { messaging, initializeMessaging } from '../firebase/config';
 import { collection, addDoc } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 const notifications = [
     { text: "📝 لا تنسى تسجيل طلبات اليوم!", emoji: "📊" },
@@ -12,34 +12,33 @@ const notifications = [
 
 export const requestNotificationPermission = async () => {
     try {
+        if (!('Notification' in window)) {
+            throw new Error('Notifications not supported');
+        }
+
         if (!('serviceWorker' in navigator)) {
             throw new Error('Service Worker not supported');
         }
-
-        const sw = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-        const messaging = getMessaging();
 
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') {
             throw new Error('Permission not granted');
         }
 
-        const token = await getToken(messaging, {
-            vapidKey: process.env.REACT_APP_FIREBASE_VAPID_KEY,
-            serviceWorkerRegistration: sw
-        });
+        await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        const token = await initializeMessaging();
 
         if (!token) {
             throw new Error('No token received');
         }
 
+        console.log('FCM Token:', token);
         await saveTokenToFirebase(token);
-        console.log('Token successfully generated:', token);
-        return token;
+        setupForegroundNotifications(messaging);
+        startPeriodicNotifications();
 
     } catch (error) {
         console.error('Notification setup error:', error);
-        throw error;
     }
 };
 
