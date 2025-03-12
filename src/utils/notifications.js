@@ -16,14 +16,20 @@ export const requestNotificationPermission = async () => {
         if (permission === 'granted') {
             const messaging = getMessaging();
             
-            // استخدام المفتاح الجديد VAPID
-            const token = await getToken(messaging, {
+            const currentToken = await getToken(messaging, {
                 vapidKey: process.env.REACT_APP_FIREBASE_VAPID_KEY
             });
             
-            await saveTokenToFirebase(token);
-            setupForegroundNotifications(messaging);
-            startPeriodicNotifications();
+            if (currentToken) {
+                console.log('Token:', currentToken); // اطبع التوكن للتحقق
+                await saveTokenToFirebase(currentToken);
+                setupForegroundNotifications(messaging);
+                startPeriodicNotifications();
+            } else {
+                console.log('No registration token available');
+            }
+        } else {
+            console.log('Permission denied');
         }
     } catch (error) {
         console.error('Error:', error);
@@ -32,11 +38,12 @@ export const requestNotificationPermission = async () => {
 
 const saveTokenToFirebase = async (token) => {
     try {
-        const tokensRef = collection(db, 'tokens');
+        const tokensRef = collection(db, 'notification_tokens');
         await addDoc(tokensRef, {
             token,
-            timestamp: new Date(),
-            platform: 'web'
+            createdAt: new Date(),
+            platform: 'web',
+            isActive: true
         });
     } catch (error) {
         console.error('Error saving token:', error);
@@ -45,21 +52,29 @@ const saveTokenToFirebase = async (token) => {
 
 const setupForegroundNotifications = (messaging) => {
     onMessage(messaging, (payload) => {
-        new Notification(payload.notification.title, {
-            body: payload.notification.body,
-            icon: '/favicon.png'
-        });
+        console.log('Received foreground message:', payload);
+        showNotification(payload.notification);
     });
 };
 
+const showNotification = (notificationData) => {
+    const { title, body } = notificationData;
+    new Notification(title, {
+        body,
+        icon: '/favicon.png',
+        badge: '/favicon.png',
+        vibrate: [200, 100, 200],
+        tag: 'store-notification'
+    });
+};
+
+// تم تعديل الفترة الزمنية لتكون أطول
 export const startPeriodicNotifications = () => {
     setInterval(() => {
         const notification = notifications[Math.floor(Math.random() * notifications.length)];
-        new Notification('تذكير من المتجر', {
-            body: notification.text,
-            icon: '/favicon.png',
-            badge: '/favicon.png',
-            tag: 'store-reminder'
+        showNotification({
+            title: 'تذكير من المتجر',
+            body: notification.text
         });
-    }, 60000); // Every minute
+    }, 300000); // كل 5 دقائق بدلاً من كل دقيقة
 };

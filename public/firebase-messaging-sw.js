@@ -6,18 +6,24 @@ firebase.initializeApp({
   authDomain: "app-anylasis.firebaseapp.com",
   projectId: "app-anylasis",
   messagingSenderId: "302260206820",
-  appId: "1:302260206820:web:8fbf734cacb3be3dd400f1",
+  appId: "1:302260206820:web:8fbf734cacb3be3dd400f1"
 });
 
 const messaging = firebase.messaging();
 
-// Handle background messages
 messaging.onBackgroundMessage((payload) => {
-  const notificationTitle = payload.notification.title;
+  console.log('Received background message:', payload);
+  
   const notificationOptions = {
     body: payload.notification.body,
-    icon: '/favicon.png'
+    icon: '/favicon.png',
+    badge: '/favicon.png',
+    vibrate: [200, 100, 200],
+    tag: 'store-notification'
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  self.registration.showNotification(
+    payload.notification.title,
+    notificationOptions
+  );
 });

@@ -21,6 +21,10 @@
       "dest": "/manifest.json"
     },
     {
+      "src": "/firebase-messaging-sw.js",
+      "dest": "/firebase-messaging-sw.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }

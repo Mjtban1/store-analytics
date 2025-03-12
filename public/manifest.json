@@ -7,7 +7,7 @@
   "orientation": "portrait",
   "theme_color": "#4CAF50",
   "background_color": "#ffffff",
-  "gcm_sender_id": "YOUR_SENDER_ID",
+  "gcm_sender_id": "302260206820",
   "icons": [
     {
       "src": "apple-touch-icon.png",
