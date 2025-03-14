@@ -1,39 +1,35 @@
 {
   "version": 2,
-  "buildCommand": "chmod +x ./node_modules/.bin/react-scripts && npm run build",
+  "buildCommand": "CI=false npm run build",
   "installCommand": "npm install",
   "framework": "create-react-app",
   "builds": [
     {
-      "src": "package.json",
-      "use": "@vercel/node",
-      "config": {
-        "maxLambdaSize": "50mb"
-      }
+      "src": "build/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
-    {
-      "src": "^/firebase-messaging-sw.js$",
-      "headers": { "cache-control": "no-cache" },
-      "dest": "/firebase-messaging-sw.js"
-    },
-    {
-      "src": "^/manifest.json$",
-      "headers": { "cache-control": "no-cache" },
-      "dest": "/manifest.json"
-    },
-    {
-      "src": "^/static/(.*)",
+    { 
+      "src": "/static/(.*)",
       "dest": "/static/$1"
     },
     {
-      "src": "^/favicon.png",
+      "src": "/favicon.png",
       "dest": "/favicon.png"
     },
     {
-      "src": ".*",
+      "src": "/manifest.json",
+      "dest": "/manifest.json"
+    },
+    {
+      "src": "/firebase-messaging-sw.js",
+      "dest": "/firebase-messaging-sw.js"
+    },
+    {
+      "src": "/(.*)",
       "dest": "/index.html"
     }
-  ]
+  ],
+  "outputDirectory": "build"
 }
