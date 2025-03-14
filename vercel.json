@@ -1,15 +1,15 @@
 {
   "version": 2,
   "public": true,
-  "framework": "create-react-app",
+  "framework": null,
+  "buildCommand": "chmod +x ./node_modules/.bin/react-scripts && CI=false npm run build",
+  "outputDirectory": "build",
   "rewrites": [
     {
       "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
-  "buildCommand": "npm run build",
-  "outputDirectory": "build",
   "headers": [
     {
       "source": "/(.*)",
@@ -20,9 +20,5 @@
         }
       ]
     }
-  ],
-  "env": {
-    "NODE_ENV": "production",
-    "CI": "false"
-  }
+  ]
 }
