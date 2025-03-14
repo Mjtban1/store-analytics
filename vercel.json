@@ -1,15 +1,14 @@
 {
   "version": 2,
-  "buildCommand": "CI=false npm run build",
+  "buildCommand": "chmod +x ./node_modules/.bin/react-scripts && npm run build",
   "installCommand": "npm install",
   "framework": "create-react-app",
   "builds": [
     {
       "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": { 
-        "distDir": "build",
-        "buildCommand": "npm run build"
+      "use": "@vercel/node",
+      "config": {
+        "maxLambdaSize": "50mb"
       }
     }
   ],
