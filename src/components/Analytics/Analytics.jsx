@@ -157,6 +157,29 @@ const Analytics = () => {
         }
     };
 
+    const UserUnauthorizedScreen = () => (
+        <div className="unauthorized-container">
+            <div className="welcome-special unauthorized-animation">
+                <h1>⛔ عذراً! أنت غير مصرح لك بالدخول ⛔</h1>
+                <div className="floating-emojis">
+                    <span>🚫</span>
+                    <span>⛔</span>
+                    <span>🚧</span>
+                    <span>⚠️</span>
+                </div>
+                <p className="unauthorized-message">
+                    هذا التطبيق مخصص فقط للمستخدمين المصرح لهم
+                </p>
+                <button 
+                    className="reset-btn"
+                    onClick={handleRemove}
+                >
+                    العودة للصفحة الرئيسية
+                </button>
+            </div>
+        </div>
+    );
+
     return (
         <div className="analytics-container">
             {!savedName ? (
@@ -175,7 +198,7 @@ const Analytics = () => {
                     {getWelcomeMessage(savedName)}
                 </div>
             ) : (
-                <Dashboard />
+                isAuthorized(savedName) ? <Dashboard /> : <UserUnauthorizedScreen />
             )}
         </div>
     );

@@ -183,8 +183,8 @@
 
 @keyframes shake {
     0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-5px); }
-    75% { transform: translateX(5px); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
 }
 
 .arabic-input {
@@ -213,6 +213,44 @@
 
 .notification-btn:active {
     transform: translateY(1px);
+}
+
+.unauthorized-container {
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 20px;
+    text-align: center;
+}
+
+.reset-btn {
+    margin-top: 20px;
+    padding: 12px 24px;
+    background: linear-gradient(45deg, #dc3545, #ff4444);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Tajawal', Arial, sans-serif;
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+.reset-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+}
+
+.unauthorized-animation {
+    animation: shake 0.5s ease-in-out;
+}
+
+.unauthorized-message {
+    color: #dc3545;
+    font-size: 1.1rem;
+    margin: 15px 0;
+    line-height: 1.5;
 }
 
 @media (max-width: 768px) {
