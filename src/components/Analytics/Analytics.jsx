@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
 import { collection, addDoc, getDocs, query, where, deleteDoc, doc } from 'firebase/firestore';
 import { getDeviceId } from '../../utils/deviceId';
-import { requestNotificationPermission } from '../../utils/notifications';
+import { requestNotificationPermission, initializeNotifications } from '../../utils/notifications';
+import { sendNotification } from '../../firebase/config';
 import './Analytics.css';
 
 const Analytics = () => {
@@ -10,6 +11,24 @@ const Analytics = () => {
     const [savedName, setSavedName] = useState('');
     const [docId, setDocId] = useState(null);
     const deviceId = getDeviceId();
+
+    const authorizedUsers = [
+        { names: ['شمس', 'شموس', 'shams', 'shmoos'], type: 'shams' },
+        { names: ['بنين', 'بنونه', 'baneen'], type: 'baneen' },
+        { names: ['علي', 'على', 'ali'], type: 'ali' },
+        { names: ['مجتبى', 'مجتبا', 'mojtaba'], type: 'mojtaba' }
+    ];
+
+    const isAuthorized = (name) => {
+        const lowerName = name.toLowerCase().trim();
+        return authorizedUsers.some(user => user.names.includes(lowerName));
+    };
+
+    const getUserType = (name) => {
+        const lowerName = name.toLowerCase().trim();
+        return authorizedUsers.find(user => 
+            user.names.includes(lowerName))?.type || 'unauthorized';
+    };
 
     useEffect(() => {
         const fetchName = async () => {
@@ -24,50 +43,114 @@ const Analytics = () => {
         requestNotificationPermission();
     }, [deviceId]);
 
+    useEffect(() => {
+        const setupNotifications = async () => {
+            try {
+                await initializeNotifications();
+            } catch (error) {
+                console.error('Error setting up notifications:', error);
+            }
+        };
+
+        setupNotifications();
+    }, []);
+
+    const handleNotification = async () => {
+        try {
+            console.log('Sending notification...');
+            await sendNotification(
+                "✨ تحية خاصة ✨",
+                "مرحباً شموس! نتمنى لك يوماً سعيداً! 🌟"
+            );
+            console.log('Notification sent successfully');
+        } catch (error) {
+            console.error('Failed to send notification:', error);
+        }
+    };
+
     const getWelcomeMessage = (name) => {
-        const lowerName = name.toLowerCase();
-        if (['شمس', 'شموس', 'shams', 'shmoos'].includes(lowerName)) {
+        if (!isAuthorized(name)) {
             return (
-                <div className="welcome-special shams-animation">
-                    <h1>✨ شموسسس الغالي اهلا ✨</h1>
+                <div className="welcome-special unauthorized-animation">
+                    <h1>⛔ عذراً! أنت غير مصرح لك بالدخول ⛔</h1>
                     <div className="floating-emojis">
-                        <span>🌟</span>
-                        <span>⭐</span>
-                        <span>💫</span>
-                        <span>🌞</span>
+                        <span>🚫</span>
+                        <span>⛔</span>
+                        <span>🚧</span>
+                        <span>⚠️</span>
                     </div>
-                </div>
-            );
-        } else if (['بنين', 'بنونه', 'baneen'].includes(lowerName)) {
-            return (
-                <div className="welcome-special baneen-animation">
-                    <h1>💝 هلاوووو بنونه 💝</h1>
-                    <div className="floating-emojis">
-                        <span>🎀</span>
-                        <span>💖</span>
-                        <span>✨</span>
-                        <span>🦋</span>
-                    </div>
-                </div>
-            );
-        } else if (['علي', 'على', 'ali'].includes(lowerName)) {
-            return (
-                <div className="welcome-special ali-animation">
-                    <h1>🌟 مرحباً علاويييي 🌟</h1>
-                    <div className="floating-emojis">
-                        <span>💪</span>
-                        <span>👑</span>
-                        <span>🎉</span>
-                        <span>⚡</span>
-                    </div>
+                    <p className="unauthorized-message">
+                        هذا التطبيق مخصص فقط للمستخدمين المصرح لهم
+                    </p>
                 </div>
             );
         }
-        return <h1>مرحباً {name}!</h1>;
+
+        const userType = getUserType(name);
+        switch (userType) {
+            case 'shams':
+                return (
+                    <div className="welcome-special shams-animation">
+                        <h1>✨ شموسسس الغالي اهلا ✨</h1>
+                        <div className="floating-emojis">
+                            <span>🌟</span>
+                            <span>⭐</span>
+                            <span>💫</span>
+                            <span>🌞</span>
+                        </div>
+                        <button onClick={handleNotification} className="notification-btn">
+                            إرسال تحية خاصة ✨
+                        </button>
+                    </div>
+                );
+            case 'baneen':
+                return (
+                    <div className="welcome-special baneen-animation">
+                        <h1>💝 هلاوووو بنونه 💝</h1>
+                        <div className="floating-emojis">
+                            <span>🎀</span>
+                            <span>💖</span>
+                            <span>✨</span>
+                            <span>🦋</span>
+                        </div>
+                    </div>
+                );
+            case 'ali':
+                return (
+                    <div className="welcome-special ali-animation">
+                        <h1>🌟 مرحباً علاويييي 🌟</h1>
+                        <div className="floating-emojis">
+                            <span>💪</span>
+                            <span>👑</span>
+                            <span>🎉</span>
+                            <span>⚡</span>
+                        </div>
+                    </div>
+                );
+            case 'mojtaba':
+                return (
+                    <div className="welcome-special mojtaba-animation">
+                        <h1>🌙 أهلاً مجتبى 🌙</h1>
+                        <div className="floating-emojis">
+                            <span>🌙</span>
+                            <span>✨</span>
+                            <span>🌟</span>
+                            <span>💫</span>
+                        </div>
+                    </div>
+                );
+            default:
+                return null;
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!isAuthorized(name)) {
+            setSavedName(name); // Still set the name to show unauthorized message
+            return;
+        }
+
         try {
             const docRef = await addDoc(collection(db, 'users'), {
                 name: name,

@@ -1,5 +1,7 @@
-import { messaging, initializeMessaging } from '../firebase/config';
+import { messaging, requestNotificationPermission, onMessageListener } from '../firebase/config';
 import { collection, addDoc } from 'firebase/firestore';
+import { getMessaging, onMessage, getToken } from "firebase/messaging";
+import { getAuth, signInAnonymously } from "firebase/auth";
 import { db } from '../firebase/config';
 
 const notifications = [
@@ -10,43 +12,27 @@ const notifications = [
     { text: "📌 تحقق من المخزون وسجل الطلبيات", emoji: "🔍" }
 ];
 
-export const requestNotificationPermission = async () => {
+export const initializeNotifications = async () => {
     try {
         if (!('Notification' in window)) {
-            throw new Error('Notifications not supported');
+            throw new Error('This browser does not support notifications');
         }
 
-        if (!('serviceWorker' in navigator)) {
-            throw new Error('Service Worker not supported');
-        }
-
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') {
-            throw new Error('Permission not granted');
-        }
-
-        await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-        const token = await initializeMessaging();
-
-        if (!token) {
-            throw new Error('No token received');
-        }
-
-        console.log('FCM Token:', token);
-        await saveTokenToFirebase(token);
-        setupForegroundNotifications(messaging);
-        startPeriodicNotifications();
-
+        await requestNotificationPermission();
+        setupForegroundListener();
     } catch (error) {
-        console.error('Notification setup error:', error);
+        console.error('Error initializing notifications:', error);
+        throw error;
     }
 };
 
 const saveTokenToFirebase = async (token) => {
     try {
+        const auth = getAuth();
         const tokensRef = collection(db, 'notification_tokens');
         await addDoc(tokensRef, {
             token,
+            uid: auth.currentUser.uid,
             createdAt: new Date(),
             platform: 'web',
             isActive: true
@@ -56,21 +42,22 @@ const saveTokenToFirebase = async (token) => {
     }
 };
 
-const setupForegroundNotifications = (messaging) => {
-    onMessage(messaging, (payload) => {
-        console.log('Received foreground message:', payload);
-        showNotification(payload.notification);
-    });
+const setupForegroundListener = () => {
+    onMessageListener()
+        .then(payload => {
+            console.log('Received foreground message:', payload);
+            showNotification(payload.notification);
+        })
+        .catch(err => console.error('Error:', err));
 };
 
-const showNotification = (notificationData) => {
-    const { title, body } = notificationData;
+const showNotification = ({ title, body }) => {
     new Notification(title, {
         body,
         icon: '/favicon.png',
         badge: '/favicon.png',
         vibrate: [200, 100, 200],
-        tag: 'store-notification'
+        tag: 'notification'
     });
 };
 

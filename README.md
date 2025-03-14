@@ -1,65 +1,38 @@
-# Store Analytics Project
+# تحليلات المتجر
 
-This project is a simple store analytics interface built using React.js, JavaScript, and CSS. It provides a clean and organized layout to display analytics data for a store.
+تطبيق ويب لإدارة وتحليل بيانات المتجر مع دعم الإشعارات.
 
-## Project Structure
+## المميزات
+- نظام مصادقة للمستخدمين المصرح لهم
+- دعم الإشعارات في الوقت الفعلي
+- واجهة مستخدم بسيطة وسهلة الاستخدام
+- تصميم متجاوب يعمل على جميع الأجهزة
 
-```
-store-analytics
-├── src
-│   ├── components
-│   │   ├── Analytics
-│   │   │   ├── Analytics.jsx
-│   │   │   └── Analytics.css
-│   │   ├── Header
-│   │   │   ├── Header.jsx
-│   │   │   └── Header.css
-│   │   └── Layout
-│   │       ├── Layout.jsx
-│   │       └── Layout.css
-│   ├── utils
-│   │   └── constants.js
-│   ├── styles
-│   │   └── global.css
-│   ├── App.jsx
-│   ├── App.css
-│   └── index.js
-├── public
-│   └── index.html
-├── package.json
-├── .gitignore
-└── README.md
+## التقنيات المستخدمة
+- React.js
+- Firebase
+- Express.js
+- Service Workers
+
+## كيفية البدء
+1. نسخ المشروع
+```bash
+git clone https://github.com/yourusername/store-analytics.git
 ```
 
-## Features
+2. تثبيت الاعتمادات
+```bash
+cd store-analytics
+npm install
+```
 
-- **Analytics Component**: Displays the analytics data for the store.
-- **Header Component**: Provides a header for the application.
-- **Layout Component**: Serves as a wrapper for the main application layout.
-- **Global Styles**: Includes global styles for consistent design across the application.
+3. إعداد ملف البيئة
+قم بإنشاء ملف `.env` في المجلد الرئيسي وأضف المتغيرات المطلوبة.
 
-## Getting Started
+4. تشغيل المشروع
+```bash
+npm start
+```
 
-1. Clone the repository:
-   ```
-   git clone <repository-url>
-   ```
-
-2. Navigate to the project directory:
-   ```
-   cd store-analytics
-   ```
-
-3. Install dependencies:
-   ```
-   npm install
-   ```
-
-4. Start the development server:
-   ```
-   npm start
-   ```
-
-## License
-
-This project is licensed under the MIT License.
+## الترخيص
+MIT
