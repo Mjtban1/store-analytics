@@ -18,11 +18,26 @@ export const initializeNotifications = async () => {
             throw new Error('This browser does not support notifications');
         }
 
-        await requestNotificationPermission();
-        setupForegroundListener();
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            throw new Error('Permission not granted');
+        }
+
+        const messaging = getMessaging();
+        const registration = await navigator.serviceWorker.ready;
+        
+        const currentToken = await getToken(messaging, {
+            vapidKey: process.env.REACT_APP_FIREBASE_VAPID_KEY,
+            serviceWorkerRegistration: registration
+        });
+
+        if (currentToken) {
+            await saveTokenToFirebase(currentToken);
+            setupForegroundListener();
+            startPeriodicNotifications();
+        }
     } catch (error) {
         console.error('Error initializing notifications:', error);
-        throw error;
     }
 };
 

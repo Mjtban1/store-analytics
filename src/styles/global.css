@@ -1,3 +1,9 @@
+:root {
+    --main-bg-color: #f8f9ff;
+    --main-purple: #6b4ba3;
+    --main-purple-light: #9b6bf6;
+}
+
 html, body {
     margin: 0;
     padding: 0;
@@ -13,7 +19,7 @@ body {
     margin: 0;
     padding: 0;
     font-family: 'Arial', sans-serif;
-    background-color: #f4f4f4;
+    background-color: var(--main-bg-color);
     color: #333;
 }
 

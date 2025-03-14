@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
 import { collection, addDoc, getDocs, query, where, deleteDoc, doc } from 'firebase/firestore';
 import { getDeviceId } from '../../utils/deviceId';
-import { requestNotificationPermission, initializeNotifications } from '../../utils/notifications';
-import { sendNotification } from '../../firebase/config';
+import Dashboard from '../Dashboard/Dashboard';
 import './Analytics.css';
 
 const Analytics = () => {
@@ -11,6 +10,7 @@ const Analytics = () => {
     const [savedName, setSavedName] = useState('');
     const [docId, setDocId] = useState(null);
     const deviceId = getDeviceId();
+    const [showWelcome, setShowWelcome] = useState(true);
 
     const authorizedUsers = [
         { names: ['شمس', 'شموس', 'shams', 'shmoos'], type: 'shams' },
@@ -40,33 +40,16 @@ const Analytics = () => {
             });
         };
         fetchName();
-        requestNotificationPermission();
     }, [deviceId]);
 
     useEffect(() => {
-        const setupNotifications = async () => {
-            try {
-                await initializeNotifications();
-            } catch (error) {
-                console.error('Error setting up notifications:', error);
-            }
-        };
-
-        setupNotifications();
-    }, []);
-
-    const handleNotification = async () => {
-        try {
-            console.log('Sending notification...');
-            await sendNotification(
-                "✨ تحية خاصة ✨",
-                "مرحباً شموس! نتمنى لك يوماً سعيداً! 🌟"
-            );
-            console.log('Notification sent successfully');
-        } catch (error) {
-            console.error('Failed to send notification:', error);
+        if (savedName) {
+            const timer = setTimeout(() => {
+                setShowWelcome(false);
+            }, 2000);
+            return () => clearTimeout(timer);
         }
-    };
+    }, [savedName]);
 
     const getWelcomeMessage = (name) => {
         if (!isAuthorized(name)) {
@@ -98,9 +81,6 @@ const Analytics = () => {
                             <span>💫</span>
                             <span>🌞</span>
                         </div>
-                        <button onClick={handleNotification} className="notification-btn">
-                            إرسال تحية خاصة ✨
-                        </button>
                     </div>
                 );
             case 'baneen':
@@ -190,11 +170,12 @@ const Analytics = () => {
                     />
                     <button type="submit" className="submit-btn">تم</button>
                 </form>
-            ) : (
+            ) : showWelcome ? (
                 <div className="welcome-container">
                     {getWelcomeMessage(savedName)}
-                    <button onClick={handleRemove} className="remove-btn">إزالة الاسم</button>
                 </div>
+            ) : (
+                <Dashboard />
             )}
         </div>
     );
