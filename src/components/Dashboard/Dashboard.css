@@ -1084,4 +1084,49 @@
         display: block;
         font-size: 0.7rem;
     }
+
+    .orders-section {
+        padding-top: 10px;
+    }
+
+    .section-header {
+        margin: 0;
+        padding: 15px;
+        background: var(--main-bg-color);
+        z-index: 1;
+        width: 100%;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        box-shadow: none;
+        border-bottom: 1px solid rgba(107, 75, 163, 0.1);
+    }
+
+    .section-header h2 {
+        font-size: 1.2rem;
+        margin: 0;
+        color: #6b4ba3;
+        white-space: nowrap;
+    }
+
+    .order-form {
+        margin: 0;
+        padding: 15px;
+        border-radius: 12px;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        position: relative;
+        z-index: 1;
+    }
+
+    /* تحسين المسافات والهوامش */
+    .form-group:first-child {
+        margin-top: 10px;
+    }
+
+    .service-types {
+        margin-top: 10px;
+    }
 }
