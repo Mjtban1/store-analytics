@@ -389,22 +389,31 @@
     .section-header {
         margin: 0;
         padding: 10px 15px;
-        position: fixed;
+        position: sticky;
         top: 60px; /* المسافة بعد شريط التنقل */
         left: 0;
         right: 0;
         background: var(--main-bg-color);
-        z-index: 100;
+        z-index: 99;
         box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         display: flex;
         align-items: center;
         justify-content: center;
+        border-bottom: 1px solid rgba(107, 75, 163, 0.1);
     }
 
     .section-header h2 {
         font-size: 1.2rem;
         margin: 0;
         color: #6b4ba3;
+        white-space: nowrap;
+    }
+
+    .order-form {
+        padding-top: 15px;
+        margin-top: 0;
+        position: relative;
+        z-index: 1;
     }
 
     .order-form {
@@ -432,6 +441,10 @@
         margin-bottom: 12px;
         width: 100%;
         margin-bottom: 10px;
+    }
+
+    .form-group:first-child {
+        margin-top: 10px;
     }
 
     .form-group label {
@@ -539,6 +552,7 @@
         padding: 0 5px;
         gap: 6px;
         flex-wrap: wrap;
+        margin-top: 15px;
     }
 
     .service-btn {
@@ -610,6 +624,11 @@
     .service-btn:active,
     .sub-type-btn:active {
         transform: translateY(1px);
+    }
+
+    /* تحسين الترتيب الطبقي */
+    .dashboard-nav {
+        z-index: 100;
     }
 }
 
