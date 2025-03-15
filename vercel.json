@@ -1,8 +1,8 @@
 {
   "version": 2,
   "public": true,
-  "installCommand": "npm install",
-  "buildCommand": "node node_modules/react-scripts/bin/react-scripts.js build",
+  "installCommand": "npm install --legacy-peer-deps",
+  "buildCommand": "npm run build",
   "outputDirectory": "build",
   "rewrites": [
     {
@@ -12,6 +12,8 @@
   ],
   "env": {
     "CI": "false",
-    "NODE_OPTIONS": "--max_old_space_size=4096"
+    "NODE_OPTIONS": "--max_old_space_size=4096",
+    "NODE_VERSION": "18.x",
+    "NPM_VERSION": "9.x"
   }
 }
