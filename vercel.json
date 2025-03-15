@@ -2,9 +2,9 @@
   "version": 2,
   "public": true,
   "framework": null,
-  "buildCommand": "npm run vercel-build",
+  "buildCommand": "CI=false npm run build",
   "outputDirectory": "build",
-  "installCommand": "npm install --legacy-peer-deps",
+  "installCommand": "npm install --legacy-peer-deps --no-audit",
   "rewrites": [
     {
       "source": "/(.*)",
