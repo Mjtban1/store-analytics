@@ -2,9 +2,9 @@
   "version": 2,
   "public": true,
   "framework": null,
-  "buildCommand": "CI=false npm run build",
+  "buildCommand": "chmod +x node_modules/.bin/react-scripts && CI=false npm run build",
   "outputDirectory": "build",
-  "installCommand": "npm install --legacy-peer-deps --no-audit --ignore-scripts",
+  "installCommand": "npm install --legacy-peer-deps --no-audit --ignore-scripts --no-bin-links",
   "rewrites": [
     {
       "source": "/(.*)",
@@ -23,6 +23,7 @@
     }
   ],
   "env": {
-    "NPM_FLAGS": "--legacy-peer-deps --no-audit"
+    "NPM_FLAGS": "--legacy-peer-deps --no-audit --no-bin-links",
+    "PATH": "/vercel/path0/node_modules/.bin:$PATH"
   }
 }
