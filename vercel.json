@@ -2,7 +2,7 @@
   "version": 2,
   "public": true,
   "framework": null,
-  "buildCommand": "chmod +x ./node_modules/.bin/* && npm run build",
+  "buildCommand": "npm run build",
   "outputDirectory": "build",
   "installCommand": "npm install --force --legacy-peer-deps --production=false",
   "rewrites": [
@@ -15,5 +15,10 @@
     "CI": "false",
     "NPM_CONFIG_PRODUCTION": "false",
     "NODE_OPTIONS": "--max_old_space_size=4096"
+  },
+  "build": {
+    "env": {
+      "NODE_VERSION": "18.x"
+    }
   }
 }

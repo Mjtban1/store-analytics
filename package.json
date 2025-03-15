@@ -44,8 +44,11 @@
     ]
   },
   "engines": {
-    "node": "18.x",
-    "npm": "9.x || 10.x"
+    "node": ">=18.0.0 <=22.x",
+    "npm": ">=9.0.0"
   },
-  "engineStrict": false
+  "engineStrict": false,
+  "volta": {
+    "node": "18.x"
+  }
 }
