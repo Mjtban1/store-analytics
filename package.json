@@ -8,8 +8,8 @@
     "build": "npx react-scripts build",
     "test": "npx react-scripts test",
     "eject": "npx react-scripts eject",
-    "vercel-build": "npx react-scripts build",
-    "postinstall": "echo 'Skipping postinstall script'"
+    "vercel-build": "chmod +x node_modules/.bin/react-scripts && react-scripts build",
+    "postinstall": "npx patch-package"
   },
   "dependencies": {
     "react": "^18.2.0",
