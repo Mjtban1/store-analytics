@@ -7,12 +7,11 @@
 html, body {
     margin: 0;
     padding: 0;
-    overflow: hidden;
-    position: fixed;
     width: 100%;
     height: 100%;
     -webkit-text-size-adjust: 100%;
     touch-action: manipulation;
+    overflow-y: auto; /* تفعيل التمرير العمودي */
 }
 
 body {
@@ -21,6 +20,31 @@ body {
     font-family: 'Arial', sans-serif;
     background-color: var(--main-bg-color);
     color: #333;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+    position: relative; /* إزالة position: fixed */
+}
+
+/* إخفاء شكل السكرول في Chrome/Safari/Opera */
+body::-webkit-scrollbar {
+    display: none;
+}
+
+/* تطبيق نفس الأسلوب على جميع العناصر التي تحتوي على سكرول */
+.dashboard-content,
+.order-form,
+textarea,
+.stats-grid {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    overflow-y: auto; /* تفعيل التمرير العمودي */
+}
+
+.dashboard-content::-webkit-scrollbar,
+.order-form::-webkit-scrollbar,
+textarea::-webkit-scrollbar,
+.stats-grid::-webkit-scrollbar {
+    display: none;
 }
 
 h1, h2, h3, h4, h5, h6 {

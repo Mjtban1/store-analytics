@@ -2,7 +2,7 @@
   "version": 2,
   "public": true,
   "framework": null,
-  "buildCommand": "chmod +x ./node_modules/.bin/react-scripts && CI=false npm run build",
+  "buildCommand": "set CI=false && npm run build",
   "outputDirectory": "build",
   "rewrites": [
     {
