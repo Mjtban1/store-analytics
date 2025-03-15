@@ -1,10 +1,10 @@
 {
   "version": 2,
   "public": true,
-  "framework": "create-react-app",
-  "buildCommand": "npm run build",
+  "framework": null,
+  "buildCommand": "chmod +x ./node_modules/.bin/* && npm run build",
   "outputDirectory": "build",
-  "installCommand": "npm install --force --legacy-peer-deps --no-audit --unsafe-perm",
+  "installCommand": "npm install --force --legacy-peer-deps --production=false",
   "rewrites": [
     {
       "source": "/(.*)",
@@ -13,8 +13,7 @@
   ],
   "env": {
     "CI": "false",
-    "NODE_OPTIONS": "--max_old_space_size=4096",
-    "PATH": "/vercel/path0/node_modules/.bin:$PATH",
-    "NPM_FLAGS": "--force --legacy-peer-deps --no-audit --unsafe-perm"
+    "NPM_CONFIG_PRODUCTION": "false",
+    "NODE_OPTIONS": "--max_old_space_size=4096"
   }
 }
