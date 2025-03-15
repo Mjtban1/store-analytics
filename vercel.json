@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "public": true,
-  "installCommand": "npm install --legacy-peer-deps",
-  "buildCommand": "npm run build",
+  "public": true, 
+  "installCommand": "npm install --legacy-peer-deps --unsafe-perm=true",
+  "buildCommand": "npm run vercel-build",
   "outputDirectory": "build",
   "rewrites": [
     {
