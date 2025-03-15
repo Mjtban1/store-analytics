@@ -4,7 +4,7 @@
   "framework": null,
   "buildCommand": "CI=false npm run build",
   "outputDirectory": "build",
-  "installCommand": "npm install --legacy-peer-deps --no-audit",
+  "installCommand": "npm install --legacy-peer-deps --no-audit --ignore-scripts",
   "rewrites": [
     {
       "source": "/(.*)",
@@ -21,5 +21,8 @@
         }
       ]
     }
-  ]
+  ],
+  "env": {
+    "NPM_FLAGS": "--legacy-peer-deps --no-audit"
+  }
 }

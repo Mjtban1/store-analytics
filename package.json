@@ -5,11 +5,11 @@
   "main": "src/index.js",
   "scripts": {
     "start": "react-scripts start",
-    "build": "set GENERATE_SOURCEMAP=false && set CI=false && react-scripts build",
+    "build": "CI=false react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "postinstall": "npm audit fix --force",
-    "vercel-build": "npm run build"
+    "postinstall": "echo 'Skipping postinstall script'",
+    "vercel-build": "CI=false npm run build"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -43,8 +43,8 @@
     ]
   },
   "engines": {
-    "node": "18.20.6",
-    "npm": ">=9.0.0"
+    "node": "18.x",
+    "npm": "9.x"
   },
   "engineStrict": false
 }
