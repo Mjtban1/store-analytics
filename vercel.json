@@ -1,23 +1,17 @@
 {
   "version": 2,
   "public": true,
-  "framework": "create-react-app",
-  "buildCommand": "npm run vercel-build",
+  "installCommand": "npm install",
+  "buildCommand": "node node_modules/react-scripts/bin/react-scripts.js build",
   "outputDirectory": "build",
-  "installCommand": "npm install --prefer-offline --no-audit --no-optional",
   "rewrites": [
     {
       "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
-  "github": {
-    "silent": true,
-    "autoAlias": true
-  },
   "env": {
     "CI": "false",
-    "NODE_ENV": "production",
-    "NPM_RC": "legacy-peer-deps=true\nstrict-ssl=false"
+    "NODE_OPTIONS": "--max_old_space_size=4096"
   }
 }
