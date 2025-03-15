@@ -12,8 +12,6 @@
   ],
   "env": {
     "CI": "false",
-    "NODE_OPTIONS": "--max_old_space_size=4096",
-    "NODE_VERSION": "18.x",
-    "NPM_VERSION": "9.x"
+    "NODE_OPTIONS": "--max_old_space_size=4096"
   }
 }
