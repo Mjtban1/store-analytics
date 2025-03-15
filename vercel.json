@@ -1,24 +1,23 @@
 {
   "version": 2,
   "public": true,
-  "framework": null,
-  "buildCommand": "npm run build",
+  "framework": "create-react-app",
+  "buildCommand": "npm run vercel-build",
   "outputDirectory": "build",
-  "installCommand": "npm install --force --legacy-peer-deps --production=false",
+  "installCommand": "npm install --prefer-offline --no-audit --no-optional",
   "rewrites": [
     {
       "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
+  "github": {
+    "silent": true,
+    "autoAlias": true
+  },
   "env": {
     "CI": "false",
-    "NPM_CONFIG_PRODUCTION": "false",
-    "NODE_OPTIONS": "--max_old_space_size=4096"
-  },
-  "build": {
-    "env": {
-      "NODE_VERSION": "18.x"
-    }
+    "NODE_ENV": "production",
+    "NPM_RC": "legacy-peer-deps=true\nstrict-ssl=false"
   }
 }
