@@ -1,29 +1,20 @@
 {
   "version": 2,
   "public": true,
-  "framework": null,
-  "buildCommand": "chmod +x node_modules/.bin/react-scripts && CI=false npm run build",
+  "framework": "create-react-app",
+  "buildCommand": "npm run build",
   "outputDirectory": "build",
-  "installCommand": "npm install --legacy-peer-deps --no-audit --ignore-scripts --no-bin-links",
+  "installCommand": "npm install --force --legacy-peer-deps --no-audit --unsafe-perm",
   "rewrites": [
     {
       "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "s-maxage=1, stale-while-revalidate"
-        }
-      ]
-    }
-  ],
   "env": {
-    "NPM_FLAGS": "--legacy-peer-deps --no-audit --no-bin-links",
-    "PATH": "/vercel/path0/node_modules/.bin:$PATH"
+    "CI": "false",
+    "NODE_OPTIONS": "--max_old_space_size=4096",
+    "PATH": "/vercel/path0/node_modules/.bin:$PATH",
+    "NPM_FLAGS": "--force --legacy-peer-deps --no-audit --unsafe-perm"
   }
 }
