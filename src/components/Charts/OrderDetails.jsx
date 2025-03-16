@@ -1,9 +1,162 @@
 import React, { useState } from 'react';
+import { db } from '../../firebase/config';
+import { doc, updateDoc } from 'firebase/firestore';
 
-const OrderDetails = ({ orders }) => {
+const OrderDetails = ({ orders, onUpdateOrder }) => {
     const [filterType, setFilterType] = useState('all');
     const [sortBy, setSortBy] = useState('date');
     const [sortOrder, setSortOrder] = useState('desc');
+    
+    // إضافة حالات جديدة للتعديل
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [editingOrder, setEditingOrder] = useState(null);
+    const [editFormData, setEditFormData] = useState(null);
+
+    // دالة لفتح نافذة التعديل
+    const handleEditClick = (order) => {
+        setEditingOrder(order);
+        setEditFormData({
+            productName: order.productName,
+            serviceType: order.serviceType,
+            costPrice: order.costPrice,
+            sellingPrice: order.sellingPrice,
+            paymentMethod: order.paymentMethod,
+            description: order.description || ''
+        });
+        setEditModalOpen(true);
+    };
+
+    // تحسين دالة حفظ التعديلات
+    const handleSaveEdit = async () => {
+        if (!editingOrder || !editFormData) return;
+
+        try {
+            if (!editFormData.productName || !editFormData.costPrice || !editFormData.sellingPrice) {
+                alert('يرجى ملء جميع الحقول المطلوبة');
+                return;
+            }
+
+            const updatedData = {
+                ...editFormData,
+                costPrice: Number(editFormData.costPrice),
+                sellingPrice: Number(editFormData.sellingPrice),
+                lastModified: new Date()
+            };
+
+            await updateDoc(doc(db, 'orders', editingOrder.id), updatedData);
+            
+            if (onUpdateOrder) {
+                onUpdateOrder(editingOrder.id, updatedData);
+            }
+
+            setEditModalOpen(false);
+            setEditingOrder(null);
+            setEditFormData(null);
+            
+            // إظهار رسالة نجاح مخصصة
+            const successMessage = document.createElement('div');
+            successMessage.className = 'success-message';
+            successMessage.textContent = 'تم تحديث الطلب بنجاح';
+            document.body.appendChild(successMessage);
+            
+            setTimeout(() => {
+                successMessage.remove();
+                window.location.reload();
+            }, 1500);
+        } catch (error) {
+            console.error("Error updating order:", error);
+            alert('حدث خطأ أثناء تحديث الطلب');
+        }
+    };
+
+    // دالة لإغلاق نافذة التعديل
+    const handleCloseEdit = () => {
+        setEditModalOpen(false);
+        setEditingOrder(null);
+        setEditFormData(null);
+    };
+
+    // تحسين نافذة التعديل المنبثقة
+    const EditModal = () => {
+        if (!editModalOpen || !editFormData) return null;
+
+        return (
+            <div className="edit-modal-overlay" onClick={handleCloseEdit}>
+                <div className="edit-modal" onClick={e => e.stopPropagation()}>
+                    <div className="edit-modal-header">
+                        <h3>تعديل الطلب</h3>
+                        <button className="close-btn" onClick={handleCloseEdit}>×</button>
+                    </div>
+                    <div className="edit-modal-content">
+                        <div className="edit-form-grid">
+                            <div className="edit-form-group">
+                                <label>المنتج</label>
+                                <input
+                                    type="text"
+                                    value={editFormData.productName}
+                                    onChange={e => setEditFormData({...editFormData, productName: e.target.value})}
+                                />
+                            </div>
+                            <div className="edit-form-group">
+                                <label>نوع الخدمة</label>
+                                <select
+                                    value={editFormData.serviceType}
+                                    onChange={e => setEditFormData({...editFormData, serviceType: e.target.value})}
+                                >
+                                    <option value="games">ألعاب</option>
+                                    <option value="subscriptions">اشتراكات</option>
+                                    <option value="services">خدمات</option>
+                                </select>
+                            </div>
+                            <div className="edit-form-group">
+                                <label>سعر التكلفة</label>
+                                <input
+                                    type="number"
+                                    value={editFormData.costPrice}
+                                    onChange={e => setEditFormData({...editFormData, costPrice: e.target.value})}
+                                />
+                            </div>
+                            <div className="edit-form-group">
+                                <label>سعر البيع</label>
+                                <input
+                                    type="number"
+                                    value={editFormData.sellingPrice}
+                                    onChange={e => setEditFormData({...editFormData, sellingPrice: e.target.value})}
+                                />
+                            </div>
+                            <div className="edit-form-group">
+                                <label>طريقة الدفع</label>
+                                <select
+                                    value={editFormData.paymentMethod}
+                                    onChange={e => setEditFormData({...editFormData, paymentMethod: e.target.value})}
+                                >
+                                    <option value="asiacell">آسياسيل</option>
+                                    <option value="zain">زين كاش</option>
+                                    <option value="rafidain">الرافدين</option>
+                                    <option value="crypto">كربتو</option>
+                                </select>
+                            </div>
+                            <div className="edit-form-group full-width">
+                                <label>ملاحظات</label>
+                                <textarea
+                                    value={editFormData.description || ''}
+                                    onChange={e => setEditFormData({...editFormData, description: e.target.value})}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="edit-modal-footer">
+                        <button className="save-btn" onClick={handleSaveEdit}>
+                            حفظ
+                        </button>
+                        <button className="cancel-btn" onClick={handleCloseEdit}>
+                            إلغاء
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     const calculateProfit = (selling, cost) => {
         const sellingPrice = Number(selling);
@@ -206,7 +359,13 @@ const OrderDetails = ({ orders }) => {
                                     gap: '8px',
                                     justifyContent: 'center'
                                 }}>
-                                    <button style={{ border: 'none', background: 'none', cursor: 'pointer' }} title="تعديل">✏️</button>
+                                    <button 
+                                        style={{ border: 'none', background: 'none', cursor: 'pointer' }} 
+                                        title="تعديل"
+                                        onClick={() => handleEditClick(order)}
+                                    >
+                                        ✏️
+                                    </button>
                                     <button style={{ border: 'none', background: 'none', cursor: 'pointer' }} title="حذف">🗑️</button>
                                     <button style={{ border: 'none', background: 'none', cursor: 'pointer' }} title="إنشاء إيصال">📄</button>
                                     <button style={{ border: 'none', background: 'none', cursor: 'pointer' }} title="أرشفة">📦</button>
@@ -215,11 +374,12 @@ const OrderDetails = ({ orders }) => {
                         ))}
                 </tbody>
             </table>
+            <EditModal />
         </div>
     );
 };
 
-// إضافة الأنماط المتحركة
+// تحديث الأنماط
 const styles = `.stat-card-animated {
     animation: cardAppear 0.5s ease-out;
 }
@@ -499,6 +659,159 @@ const styles = `.stat-card-animated {
 
     .card-growth {
         font-size: 0.8rem;
+    }
+}
+
+/* أنماط نافذة التعديل المنبثقة */
+.edit-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 15px;
+}
+
+.edit-modal {
+    background: white;
+    border-radius: 15px;
+    width: 95%;
+    max-width: 400px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.3s ease-out;
+}
+
+.edit-modal-header {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8f9ff;
+    border-radius: 15px 15px 0 0;
+}
+
+.edit-modal-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: #333;
+    font-weight: 600;
+}
+
+.edit-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 15px;
+}
+
+.edit-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.edit-form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.edit-form-group label {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.edit-form-group input,
+.edit-form-group select {
+    height: 35px;
+    padding: 0 10px;
+    border: 1px solid #e0e0fe;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.edit-form-group textarea {
+    height: 60px;
+    padding: 8px 10px;
+    border: 1px solid #e0e0fe;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    resize: vertical;
+    min-height: 60px;
+    max-height: 120px;
+}
+
+.edit-modal-footer {
+    padding: 12px 15px;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.save-btn,
+.cancel-btn {
+    padding: 6px 15px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 60px;
+}
+
+.save-btn {
+    background: var(--main-purple);
+    color: white;
+    border: none;
+}
+
+.cancel-btn {
+    background: #f5f5f5;
+    color: #666;
+    border: 1px solid #ddd;
+}
+
+.success-message {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #4caf50;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    animation: slideDown 0.3s ease-out;
+    z-index: 1001;
+}
+
+@keyframes slideDown {
+    from { transform: translate(-50%, -20px); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+@media (max-width: 480px) {
+    .edit-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .edit-modal {
+        max-height: 90vh;
+    }
+
+    .edit-form-group input,
+    .edit-form-group select {
+        height: 40px;
+        font-size: 16px;
     }
 }
 `;

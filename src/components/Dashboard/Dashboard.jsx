@@ -39,7 +39,15 @@ const Dashboard = ({ orders: initialOrders }) => {
     // إضافة حالة جديدة لإدارة نافذة التأكيد
     const [deleteModal, setDeleteModal] = useState({
         isOpen: false,
-        itemId: null
+        itemId: null,
+        type: null
+    });
+
+    // إضافة حالة جديدة للتنبيه
+    const [insufficientModal, setInsufficientModal] = useState({
+        isOpen: false,
+        currentCapital: 0,
+        requiredAmount: 0
     });
 
     const [orders, setOrders] = useState(initialOrders || []);
@@ -53,10 +61,30 @@ const Dashboard = ({ orders: initialOrders }) => {
     });
 
     const sections = {
-        orders: { title: 'تسجيل الطلبات', icon: '📦' },
-        capital: { title: 'رأس المال', icon: '💰' },
-        analytics: { title: 'تحليل الطلبات', icon: '📊' },
-        archive: { title: 'الأرشيف', icon: '📂' }
+        orders: { 
+            title: 'تسجيل الطلبات', 
+            icon: `<img src="/icons/3d/orders-3d.png" alt="orders" class="nav-icon" />`,
+            activeIcon: `<img src="/icons/3d/orders-3d-active.png" alt="orders" class="nav-icon active" />`,
+            description: 'إضافة وإدارة الطلبات الجديدة'
+        },
+        capital: { 
+            title: 'رأس المال',
+            icon: `<img src="/icons/3d/capital-3d.png" alt="capital" class="nav-icon" />`,
+            activeIcon: `<img src="/icons/3d/capital-3d-active.png" alt="capital" class="nav-icon active" />`,
+            description: 'متابعة وإدارة رأس المال'
+        },
+        analytics: { 
+            title: 'تحليل الطلبات',
+            icon: `<img src="/icons/3d/analytics-3d.png" alt="analytics" class="nav-icon" />`,
+            activeIcon: `<img src="/icons/3d/analytics-3d-active.png" alt="analytics" class="nav-icon active" />`,
+            description: 'تحليلات وإحصائيات الأداء'
+        },
+        archive: { 
+            title: 'الأرشيف',
+            icon: `<img src="/icons/3d/archive-3d.png" alt="archive" class="nav-icon" />`,
+            activeIcon: `<img src="/icons/3d/archive-3d-active.png" alt="archive" class="nav-icon active" />`,
+            description: 'الطلبات المؤرشفة والسجلات'
+        }
     };
 
     const handleInputChange = (e) => {
@@ -82,20 +110,41 @@ const Dashboard = ({ orders: initialOrders }) => {
         }
 
         try {
+            // التحقق من رأس المال
+            const costPrice = Number(formData.costPrice);
+            if (costPrice > totalCapital) {
+                setInsufficientModal({
+                    isOpen: true,
+                    currentCapital: totalCapital,
+                    requiredAmount: costPrice
+                });
+                return;
+            }
+
             const orderData = {
                 ...formData,
-                timestamp: new Date(), // Store as Date object
+                timestamp: new Date(),
                 profit: Number(formData.sellingPrice) - Number(formData.costPrice),
                 profitMargin: ((Number(formData.sellingPrice) - Number(formData.costPrice)) / Number(formData.sellingPrice)) * 100
             };
 
-            const docRef = await addDoc(collection(db, 'orders'), orderData);
-            
-            // Update local state with the correct timestamp
-            setOrders(prev => [...prev, { id: docRef.id, ...orderData }]);
-            updateAnalytics([...orders, orderData]);
+            // إضافة الطلب وتحديث رأس المال
+            const orderRef = await addDoc(collection(db, 'orders'), orderData);
+            await addDoc(collection(db, 'capital'), {
+                amount: -costPrice,
+                note: `خصم تكلفة طلب - ${orderData.productName}`,
+                date: new Date().toISOString().split('T')[0],
+                timestamp: new Date(),
+                type: 'expense',
+                orderId: orderRef.id
+            });
 
-            // Reset form
+            // تحديث الحالات
+            setOrders(prev => [...prev, { id: orderRef.id, ...orderData }]);
+            updateAnalytics([...orders, orderData]);
+            await fetchCapitalHistory(); // تحديث رأس المال
+
+            // إعادة تعيين النموذج
             setFormData({
                 productName: '',
                 costPrice: '',
@@ -193,32 +242,40 @@ const Dashboard = ({ orders: initialOrders }) => {
     const handleDeleteCapital = async (id) => {
         setDeleteModal({
             isOpen: true,
-            itemId: id
+            itemId: id,
+            type: 'capital' // إضافة نوع العنصر المراد حذفه
         });
     };
 
     // إضافة دالة confirmDelete
     const confirmDelete = async () => {
         try {
-            await deleteDoc(doc(db, 'capital', deleteModal.itemId));
-            await fetchCapitalHistory();
-            setDeleteModal({ isOpen: false, itemId: null });
+            if (deleteModal.type === 'capital') {
+                await deleteDoc(doc(db, 'capital', deleteModal.itemId));
+                await fetchCapitalHistory(); // إعادة تحميل سجل رأس المال
+            }
+            setDeleteModal({ isOpen: false, itemId: null, type: null });
         } catch (error) {
-            console.error("Error deleting capital:", error);
+            console.error("Error deleting item:", error);
+            alert('حدث خطأ أثناء الحذف');
         }
     };
 
-    // إضافة مكون DeleteConfirmModal
+    // تعديل مكون DeleteConfirmModal
     const DeleteConfirmModal = () => {
         if (!deleteModal.isOpen) return null;
 
         return (
-            <div className="delete-modal-overlay" onClick={() => setDeleteModal({ isOpen: false, itemId: null })}>
+            <div className="delete-modal-overlay" onClick={() => setDeleteModal({ isOpen: false, itemId: null, type: null })}>
                 <div className="delete-modal" onClick={e => e.stopPropagation()}>
-                    <span className="delete-modal-emoji">🗑️</span>
+                    <div className="delete-modal-icon">
+                        🗑️
+                    </div>
                     <h3 className="delete-modal-title">تأكيد الحذف</h3>
                     <p className="delete-modal-message">
-                        هل أنت متأكد من حذف هذا المبلغ؟
+                        {deleteModal.type === 'capital' 
+                            ? 'هل أنت متأكد من حذف هذا المبلغ من سجل رأس المال؟'
+                            : 'هل أنت متأكد من حذف هذا العنصر؟'}
                         <br />
                         لا يمكن التراجع عن هذا الإجراء.
                     </p>
@@ -227,11 +284,54 @@ const Dashboard = ({ orders: initialOrders }) => {
                             className="delete-modal-btn confirm"
                             onClick={confirmDelete}
                         >
-                            حذف
+                            نعم، احذف
                         </button>
                         <button
                             className="delete-modal-btn cancel"
-                            onClick={() => setDeleteModal({ isOpen: false, itemId: null })}
+                            onClick={() => setDeleteModal({ isOpen: false, itemId: null, type: null })}
+                        >
+                            إلغاء
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // إضافة مكون نافذة التنبيه
+    const InsufficientFundsModal = () => {
+        if (!insufficientModal.isOpen) return null;
+
+        return (
+            <div className="insufficient-modal-overlay" onClick={() => setInsufficientModal({ ...insufficientModal, isOpen: false })}>
+                <div className="insufficient-modal" onClick={e => e.stopPropagation()}>
+                    <div className="insufficient-modal-icon">
+                        {insufficientModal.currentCapital <= 0 ? '💸' : '⚠️'}
+                    </div>
+                    <h3 className="insufficient-modal-title">
+                        {insufficientModal.currentCapital <= 0 ? 'لا يوجد رأس مال' : 'رأس المال غير كافي'}
+                    </h3>
+                    <div className="insufficient-modal-content">
+                        <p>
+                            {insufficientModal.currentCapital <= 0 
+                                ? 'لا يمكن إضافة الطلب. يرجى إضافة رأس مال أولاً.'
+                                : `تكلفة الطلب (${insufficientModal.requiredAmount.toLocaleString()} د.ع) تتجاوز رأس المال المتوفر (${insufficientModal.currentCapital.toLocaleString()} د.ع)`
+                            }
+                        </p>
+                    </div>
+                    <div className="insufficient-modal-buttons">
+                        <button 
+                            className="add-capital-btn"
+                            onClick={() => {
+                                setActiveSection('capital');
+                                setInsufficientModal({ ...insufficientModal, isOpen: false });
+                            }}
+                        >
+                            إضافة رأس مال
+                        </button>
+                        <button 
+                            className="cancel-btn"
+                            onClick={() => setInsufficientModal({ ...insufficientModal, isOpen: false })}
                         >
                             إلغاء
                         </button>
@@ -787,6 +887,7 @@ const Dashboard = ({ orders: initialOrders }) => {
                                 <button
                                     className="delete-row-btn"
                                     onClick={() => handleDeleteCapital(item.id)}
+                                    title="حذف"
                                 >
                                     ×
                                 </button>
@@ -955,36 +1056,40 @@ const Dashboard = ({ orders: initialOrders }) => {
                 value: `${totalRevenue.toLocaleString()} د.ع`,
                 mainIcon: '💰',
                 subIcons: ['💵', '💎', '💰'],
-                gradient: 'linear-gradient(135deg, #4CAF50, #45a049)',
+                gradient: 'linear-gradient(135deg, #22c55e, #16a34a)',
                 growthRate: '+12.5%',
-                isPositive: true
+                isPositive: true,
+                glowColor: 'rgba(34, 197, 94, 0.5)'  // إضافة لون التوهج
             },
             {
                 title: 'إجمالي التكاليف',
                 value: `${totalCosts.toLocaleString()} د.ع`,
                 mainIcon: '💳',
                 subIcons: ['💸', '📊', '💱'],
-                gradient: 'linear-gradient(135deg, #f44336, #e53935)',
+                gradient: 'linear-gradient(135deg, #ef4444, #dc2626)',
                 growthRate: '-8.3%',
-                isPositive: false
+                isPositive: false,
+                glowColor: 'rgba(239, 68, 68, 0.5)'
             },
             {
                 title: 'صافي الربح',
                 value: `${profit.toLocaleString()} د.ع`,
                 mainIcon: '📈',
                 subIcons: ['⭐', '✨', '💫'],
-                gradient: 'linear-gradient(135deg, #2196F3, #1976D2)',
+                gradient: 'linear-gradient(135deg, #3b82f6, #2563eb)',
                 growthRate: '+15.2%',
-                isPositive: true
+                isPositive: true,
+                glowColor: 'rgba(59, 130, 246, 0.5)'
             },
             {
                 title: 'هامش الربح',
                 value: `${profitMargin}%`,
                 mainIcon: '📊',
                 subIcons: ['📈', '💹', '📊'],
-                gradient: 'linear-gradient(135deg, #FF9800, #f57c00)',
+                gradient: 'linear-gradient(135deg, #f59e0b, #d97706)',
                 growthRate: '+5.7%',
-                isPositive: true
+                isPositive: true,
+                glowColor: 'rgba(245, 158, 11, 0.5)'
             }
         ];
 
@@ -993,7 +1098,12 @@ const Dashboard = ({ orders: initialOrders }) => {
                 <div className="analytics-stats">
                     {statCards.map((card, index) => (
                         <div key={index} className="stat-card" style={{
-                            background: card.gradient
+                            background: card.gradient,
+                            position: 'relative',
+                            overflow: 'hidden',
+                            boxShadow: `0 8px 32px ${card.glowColor}`,
+                            backdropFilter: 'blur(5px)',
+                            WebkitBackdropFilter: 'blur(5px)'
                         }}>
                             {/* نمط الخلفية المتحرك */}
                             <div className="card-pattern"></div>
@@ -1008,12 +1118,21 @@ const Dashboard = ({ orders: initialOrders }) => {
 
                             {/* المحتوى */}
                             <div className="card-content">
-                                <h3>{card.title}</h3>
-                                <div className="card-value">{card.value}</div>
-                                <div className={`card-growth ${card.isPositive ? 'positive' : 'negative'}`}>
+                                <h3 style={{ color: 'rgba(255, 255, 255, 0.95)', fontWeight: '500' }}>{card.title}</h3>
+                                <div className="card-value" style={{ 
+                                    color: 'white', 
+                                    textShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                    fontSize: '2rem',
+                                    fontWeight: '700'
+                                }}>
+                                    {card.value}
+                                </div>
+                                <div className={`card-growth ${card.isPositive ? 'positive' : 'negative'}`} style={{ color: 'white' }}>
                                     <span className="growth-icon">{card.isPositive ? '↗' : '↘'}</span>
-                                    <span className="growth-text">{card.growthRate}</span>
-                                    <span className="growth-period">مقارنة بالشهر السابق</span>
+                                    <span className="growth-text" style={{ fontWeight: '600' }}>{card.growthRate}</span>
+                                    <span className="growth-period" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+                                        مقارنة بالشهر السابق
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -1168,20 +1287,28 @@ const Dashboard = ({ orders: initialOrders }) => {
     return (
         <div className="dashboard">
             <nav className="dashboard-nav">
-                {Object.entries(sections).map(([key, { title, icon }]) => (
+                {Object.entries(sections).map(([key, { title, icon, activeIcon, description }]) => (
                     <button
                         key={key}
                         className={`nav-btn ${activeSection === key ? 'active' : ''}`}
                         onClick={() => setActiveSection(key)}
+                        title={description}
                     >
-                        <span>{icon}</span>
-                        <span>{title}</span>
+                        <span 
+                            className="icon-container"
+                            dangerouslySetInnerHTML={{ 
+                                __html: activeSection === key ? activeIcon : icon 
+                            }} 
+                        />
+                        <span className="nav-title">{title}</span>
                     </button>
                 ))}
             </nav>
             <main className="dashboard-content">
                 {renderContent()}
             </main>
+            <InsufficientFundsModal />
+            <DeleteConfirmModal />
         </div>
     );
 };
