@@ -3,9 +3,12 @@ import { db } from '../../firebase/config';
 import { collection, addDoc, getDocs, query, where, deleteDoc, doc } from 'firebase/firestore';
 import { getDeviceId } from '../../utils/deviceId';
 import Dashboard from '../Dashboard/Dashboard';
+import RevenueChart from '../Charts/RevenueChart';
+import OrderTypesChart from '../Charts/OrderTypesChart';
+import OrderDetails from '../Charts/OrderDetails';
 import './Analytics.css';
 
-const Analytics = () => {
+const Analytics = ({ orders }) => {
     const [name, setName] = useState('');
     const [savedName, setSavedName] = useState('');
     const [docId, setDocId] = useState(null);
@@ -50,6 +53,24 @@ const Analytics = () => {
             return () => clearTimeout(timer);
         }
     }, [savedName]);
+
+    useEffect(() => {
+        const fetchOrders = async () => {
+            try {
+                const querySnapshot = await getDocs(collection(db, 'orders'));
+                const ordersData = querySnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                }));
+                setOrders(ordersData);
+                console.log("Fetched orders:", ordersData);
+            } catch (error) {
+                console.error("Error fetching orders:", error);
+            }
+        };
+
+        fetchOrders();
+    }, []);
 
     const getWelcomeMessage = (name) => {
         if (!isAuthorized(name)) {
@@ -198,7 +219,13 @@ const Analytics = () => {
                     {getWelcomeMessage(savedName)}
                 </div>
             ) : (
-                isAuthorized(savedName) ? <Dashboard /> : <UserUnauthorizedScreen />
+                isAuthorized(savedName) ? (
+                    <div className="analytics-content">
+                        <Dashboard orders={orders} />
+                    </div>
+                ) : (
+                    <UserUnauthorizedScreen />
+                )
             )}
         </div>
     );

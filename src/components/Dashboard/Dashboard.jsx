@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where, orderBy } from 'firebase/firestore';
+import RevenueChart from '../Charts/RevenueChart';
+import OrderTypesChart from '../Charts/OrderTypesChart';
+import OrderDetails from '../Charts/OrderDetails';
 import './Dashboard.css';
 
-const Dashboard = () => {
+const Dashboard = ({ orders: initialOrders }) => {
     const [activeSection, setActiveSection] = useState('orders');
     const [showCustomInput, setShowCustomInput] = useState(false);
     const [customProductName, setCustomProductName] = useState('');
@@ -18,7 +21,8 @@ const Dashboard = () => {
         sellingPrice: '',
         description: '',
         serviceType: 'games', // القيمة الافتراضية
-        subType: '' // نوع المنتج الفرعي
+        subType: '', // نوع المنتج الفرعي
+        paymentMethod: 'asiacell' // إضافة طريقة الدفع الافتراضية
     });
     const [capitalHistory, setCapitalHistory] = useState([]);
     const [newCapital, setNewCapital] = useState({
@@ -38,6 +42,16 @@ const Dashboard = () => {
         itemId: null
     });
 
+    const [orders, setOrders] = useState(initialOrders || []);
+    const [analytics, setAnalytics] = useState({
+        totalRevenue: 0,
+        totalCost: 0,
+        totalProfit: 0,
+        profitMargin: 0,
+        ordersByType: {},
+        revenueByType: {}
+    });
+
     const sections = {
         orders: { title: 'تسجيل الطلبات', icon: '📦' },
         capital: { title: 'رأس المال', icon: '💰' },
@@ -52,9 +66,51 @@ const Dashboard = () => {
         });
     };
 
-    const handleSubmit = (e) => {
+    const validateForm = () => {
+        return formData.productName?.trim() &&
+               formData.costPrice &&
+               formData.sellingPrice &&
+               formData.serviceType &&
+               formData.subType;
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log('Form submitted:', formData);
+        if (!validateForm()) {
+            alert('يرجى ملء جميع الحقول المطلوبة');
+            return;
+        }
+
+        try {
+            const orderData = {
+                ...formData,
+                timestamp: new Date(), // Store as Date object
+                profit: Number(formData.sellingPrice) - Number(formData.costPrice),
+                profitMargin: ((Number(formData.sellingPrice) - Number(formData.costPrice)) / Number(formData.sellingPrice)) * 100
+            };
+
+            const docRef = await addDoc(collection(db, 'orders'), orderData);
+            
+            // Update local state with the correct timestamp
+            setOrders(prev => [...prev, { id: docRef.id, ...orderData }]);
+            updateAnalytics([...orders, orderData]);
+
+            // Reset form
+            setFormData({
+                productName: '',
+                costPrice: '',
+                sellingPrice: '',
+                description: '',
+                serviceType: 'games',
+                subType: '',
+                paymentMethod: 'asiacell'
+            });
+
+            alert('تم تسجيل المنتج بنجاح');
+        } catch (error) {
+            console.error("Error adding order:", error);
+            alert('حدث خطأ أثناء تسجيل المنتج');
+        }
     };
 
     // إضافة useEffect لجلب المنتجات المخصصة عند تحميل المكون
@@ -742,137 +798,371 @@ const Dashboard = () => {
         );
     };
 
-    // تعديل renderContent لإضافة مكون DeleteConfirmModal
-    const renderContent = () => {
+    // إضافة دالة updateAnalytics
+    const updateAnalytics = (ordersData) => {
+        const analytics = {
+            totalRevenue: 0,
+            totalCost: 0,
+            totalProfit: 0,
+            profitMargin: 0,
+            ordersByType: {},
+            revenueByType: {}
+        };
+
+        ordersData.forEach(order => {
+            analytics.totalRevenue += Number(order.sellingPrice);
+            analytics.totalCost += Number(order.costPrice);
+            
+            // Update counts by type
+            analytics.ordersByType[order.serviceType] = (analytics.ordersByType[order.serviceType] || 0) + 1;
+            analytics.revenueByType[order.serviceType] = (analytics.revenueByType[order.serviceType] || 0) + Number(order.sellingPrice);
+        });
+
+        analytics.totalProfit = analytics.totalRevenue - analytics.totalCost;
+        analytics.profitMargin = (analytics.totalProfit / analytics.totalRevenue) * 100;
+
+        setAnalytics(analytics);
+    };
+
+    // إضافة useEffect لجلب الطلبات
+    useEffect(() => {
+        const fetchOrders = async () => {
+            try {
+                if (!initialOrders) {
+                    const querySnapshot = await getDocs(collection(db, 'orders'));
+                    const ordersData = querySnapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data(),
+                        timestamp: doc.data().timestamp?.toDate?.() || new Date()
+                    }));
+                    setOrders(ordersData);
+                    updateAnalytics(ordersData);
+                } else {
+                    updateAnalytics(initialOrders);
+                }
+            } catch (error) {
+                console.error("Error fetching orders:", error);
+            }
+        };
+
+        fetchOrders();
+    }, [initialOrders]);
+
+    // إضافة دالة renderAnalyticsStats
+    const renderAnalyticsStats = () => {
+        const totalRevenue = orders.reduce((sum, order) => sum + Number(order.sellingPrice), 0);
+        const totalCosts = orders.reduce((sum, order) => sum + Number(order.costPrice), 0);
+        const profit = totalRevenue - totalCosts;
+        const profitMargin = totalRevenue > 0 ? ((profit / totalRevenue) * 100).toFixed(1) : 0;
+        const averageOrderValue = orders.length > 0 ? (totalRevenue / orders.length).toFixed(0) : 0;
+
+        const statCards = [
+            {
+                title: 'إجمالي الإيرادات',
+                value: `${totalRevenue.toLocaleString()} د.ع`,
+                icon: '💰',
+                color: '#4CAF50',
+                gradient: 'linear-gradient(135deg, #4CAF50, #45a049)'
+            },
+            {
+                title: 'إجمالي التكاليف',
+                value: `${totalCosts.toLocaleString()} د.ع`,
+                icon: '💳',
+                color: '#f44336',
+                gradient: 'linear-gradient(135deg, #f44336, #e53935)'
+            },
+            {
+                title: 'صافي الربح',
+                value: `${profit.toLocaleString()} د.ع`,
+                icon: '📈',
+                color: '#2196F3',
+                gradient: 'linear-gradient(135deg, #2196F3, #1976D2)'
+            },
+            {
+                title: 'هامش الربح',
+                value: `${profitMargin}%`,
+                icon: '📊',
+                color: '#FF9800',
+                gradient: 'linear-gradient(135deg, #FF9800, #F57C00)'
+            }
+        ];
+
         return (
-            <>
-                {deleteModal.isOpen && <DeleteConfirmModal />}
-                {/* باقي الكود بدون تغيير */}
-                {(() => {
-                    switch (activeSection) {
-                        case 'orders':
-                            return (
-                                <div className="orders-section">
-                                    <div className="section-header">
-                                        <i className="section-icon">📦</i>
-                                        <h2>تسجيل المنتجات والطلبات</h2>
-                                    </div>
-                                    <form className="order-form" onSubmit={handleSubmit}>
-                                        <div className="service-types">
-                                            <button
-                                                type="button"
-                                                className={`service-btn ${formData.serviceType === 'games' ? 'active' : ''}`}
-                                                onClick={() => setFormData({...formData, serviceType: 'games'})}
-                                            >
-                                                <span>🎮</span>
-                                                <span>ألعاب</span>
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className={`service-btn ${formData.serviceType === 'subscriptions' ? 'active' : ''}`}
-                                                onClick={() => setFormData({...formData, serviceType: 'subscriptions'})}
-                                            >
-                                                <span>🎯</span>
-                                                <span>اشتراكات</span>
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className={`service-btn ${formData.serviceType === 'services' ? 'active' : ''}`}
-                                                onClick={() => setFormData({...formData, serviceType: 'services'})}
-                                            >
-                                                <span>⚡</span>
-                                                <span>خدمات</span>
-                                            </button>
-                                        </div>
-                                        {getSubTypeButtons()}
-                                        <div className="form-group">
-                                            <label>اسم المنتج</label>
-                                            <input
-                                                type="text"
-                                                name="productName"
-                                                className="form-input"
-                                                value={formData.productName}
-                                                onChange={handleInputChange}
-                                                placeholder="أدخل اسم المنتج"
-                                            />
-                                        </div>
-
-                                        <div className="form-group">
-                                            <label>سعر التكلفة</label>
-                                            <input
-                                                type="number"
-                                                name="costPrice"
-                                                className="form-input"
-                                                value={formData.costPrice}
-                                                onChange={handleInputChange}
-                                                placeholder="سعر التكلفة"
-                                            />
-                                        </div>
-
-                                        <div className="form-group">
-                                            <label>سعر البيع</label>
-                                            <input
-                                                type="number"
-                                                name="sellingPrice"
-                                                className="form-input"
-                                                value={formData.sellingPrice}
-                                                onChange={handleInputChange}
-                                                placeholder="سعر البيع"
-                                            />
-                                        </div>
-
-                                        <div className="form-group description-group">
-                                            <label>وصف المنتج</label>
-                                            <textarea
-                                                name="description"
-                                                className="form-input"
-                                                value={formData.description}
-                                                onChange={handleInputChange}
-                                                placeholder="وصف تفصيلي للمنتج"
-                                                rows="4"
-                                            ></textarea>
-                                        </div>
-
-                                        <button type="submit" className="submit-btn">
-                                            تسجيل المنتج
-                                        </button>
-                                    </form>
-                                </div>
-                            );
-                        case 'capital':
-                            return renderCapitalSection();
-                        case 'analytics':
-                            return <div className="analytics-section">
-                                <h2>تحليل الطلبات</h2>
-                                <div className="analytics-cards">
-                                    <div class="stat-card">
-                                        <h3>عدد الطلبات اليوم</h3>
-                                        <p>25</p>
-                                    </div>
-                                    <div class="stat-card">
-                                        <h3>إجمالي المبيعات</h3>
-                                        <p>150,000 د.ع</p>
-                                    </div>
-                                </div>
-                            </div>;
-                        case 'archive':
-                            return <div className="archive-section">
-                                <h2>أرشيف الطلبات</h2>
-                                <div className="archive-filters">
-                                    <input type="date" />
-                                    <select>
-                                        <option value="all">كل الطلبات</option>
-                                        <option value="completed">المكتملة</option>
-                                        <option value="cancelled">الملغية</option>
-                                    </select>
-                                </div>
-                            </div>;
-                        default:
-                            return <div>اختر قسماً</div>;
-                    }
-                })()}
-            </>
+            <div className="analytics-stats" style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                gap: '20px',
+                margin: '20px 0',
+                padding: '0 10px'
+            }}>
+                {statCards.map((card, index) => (
+                    <div key={index} style={{
+                        background: card.gradient,
+                        borderRadius: '15px',
+                        padding: '20px',
+                        color: 'white',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px',
+                        boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+                        transition: 'transform 0.3s ease',
+                        cursor: 'pointer',
+                        minHeight: '150px',
+                        position: 'relative',
+                        overflow: 'hidden'
+                    }}>
+                        <div style={{
+                            position: 'absolute',
+                            top: '10px',
+                            left: '10px',
+                            fontSize: '2rem',
+                            opacity: '0.2'
+                        }}>
+                            {card.icon}
+                        </div>
+                        <h3 style={{
+                            margin: '0',
+                            fontSize: '1rem',
+                            opacity: '0.9'
+                        }}>
+                            {card.title}
+                        </h3>
+                        <div style={{
+                            fontSize: '1.8rem',
+                            fontWeight: 'bold',
+                            marginTop: 'auto'
+                        }}>
+                            {card.value}
+                        </div>
+                    </div>
+                ))}
+            </div>
         );
+    };
+
+    // تحديث دالة renderAnalyticsSection لاستخدام الدالة الجديدة
+    const renderAnalyticsSection = () => {
+        if (activeSection !== 'analytics') return null;
+        
+        const totalRevenue = orders?.reduce((sum, order) => sum + Number(order.sellingPrice), 0) || 0;
+        const totalCosts = orders?.reduce((sum, order) => sum + Number(order.costPrice), 0) || 0;
+        const profit = totalRevenue - totalCosts;
+        const profitMargin = totalRevenue > 0 ? ((profit / totalRevenue) * 100).toFixed(1) : 0;
+
+        const statCards = [
+            {
+                title: 'إجمالي الإيرادات',
+                value: `${totalRevenue.toLocaleString()} د.ع`,
+                mainIcon: '💰',
+                subIcons: ['💵', '💎', '💰'],
+                gradient: 'linear-gradient(135deg, #4CAF50, #45a049)',
+                growthRate: '+12.5%',
+                isPositive: true
+            },
+            {
+                title: 'إجمالي التكاليف',
+                value: `${totalCosts.toLocaleString()} د.ع`,
+                mainIcon: '💳',
+                subIcons: ['💸', '📊', '💱'],
+                gradient: 'linear-gradient(135deg, #f44336, #e53935)',
+                growthRate: '-8.3%',
+                isPositive: false
+            },
+            {
+                title: 'صافي الربح',
+                value: `${profit.toLocaleString()} د.ع`,
+                mainIcon: '📈',
+                subIcons: ['⭐', '✨', '💫'],
+                gradient: 'linear-gradient(135deg, #2196F3, #1976D2)',
+                growthRate: '+15.2%',
+                isPositive: true
+            },
+            {
+                title: 'هامش الربح',
+                value: `${profitMargin}%`,
+                mainIcon: '📊',
+                subIcons: ['📈', '💹', '📊'],
+                gradient: 'linear-gradient(135deg, #FF9800, #f57c00)',
+                growthRate: '+5.7%',
+                isPositive: true
+            }
+        ];
+
+        return (
+            <div className="analytics-section">
+                <div className="analytics-stats">
+                    {statCards.map((card, index) => (
+                        <div key={index} className="stat-card" style={{
+                            background: card.gradient
+                        }}>
+                            {/* نمط الخلفية المتحرك */}
+                            <div className="card-pattern"></div>
+
+                            {/* الأيقونات العائمة */}
+                            {card.subIcons.map((icon, i) => (
+                                <span key={i} className={`floating-icon icon-${i}`}>{icon}</span>
+                            ))}
+
+                            {/* الأيقونة الرئيسية */}
+                            <div className="main-icon">{card.mainIcon}</div>
+
+                            {/* المحتوى */}
+                            <div className="card-content">
+                                <h3>{card.title}</h3>
+                                <div className="card-value">{card.value}</div>
+                                <div className={`card-growth ${card.isPositive ? 'positive' : 'negative'}`}>
+                                    <span className="growth-icon">{card.isPositive ? '↗' : '↘'}</span>
+                                    <span className="growth-text">{card.growthRate}</span>
+                                    <span className="growth-period">مقارنة بالشهر السابق</span>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <div className="charts-container">
+                    <RevenueChart orders={orders} />
+                    <OrderTypesChart orders={orders} />
+                </div>
+                <OrderDetails orders={orders} />
+            </div>
+        );
+    };
+
+    const renderContent = () => {
+        switch (activeSection) {
+            case 'orders':
+                return (
+                    <div className="orders-section">
+                        <div className="section-header">
+                            <i className="section-icon">📦</i>
+                            <h2>تسجيل المنتجات والطلبات</h2>
+                        </div>
+                        <form className="order-form" onSubmit={handleSubmit}>
+                            <div className="service-types">
+                                <button
+                                    type="button"
+                                    className={`service-btn ${formData.serviceType === 'games' ? 'active' : ''}`}
+                                    onClick={() => setFormData({...formData, serviceType: 'games'})}
+                                >
+                                    <span>🎮</span>
+                                    <span>ألعاب</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`service-btn ${formData.serviceType === 'subscriptions' ? 'active' : ''}`}
+                                    onClick={() => setFormData({...formData, serviceType: 'subscriptions'})}
+                                >
+                                    <span>🎯</span>
+                                    <span>اشتراكات</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`service-btn ${formData.serviceType === 'services' ? 'active' : ''}`}
+                                    onClick={() => setFormData({...formData, serviceType: 'services'})}
+                                >
+                                    <span>⚡</span>
+                                    <span>خدمات</span>
+                                </button>
+                            </div>
+                            {getSubTypeButtons()}
+                            <div className="form-group">
+                                <label>اسم المنتج</label>
+                                <input
+                                    type="text"
+                                    name="productName"
+                                    className="form-input"
+                                    value={formData.productName}
+                                    onChange={handleInputChange}
+                                    placeholder="أدخل اسم المنتج"
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>سعر التكلفة</label>
+                                <input
+                                    type="number"
+                                    name="costPrice"
+                                    className="form-input"
+                                    value={formData.costPrice}
+                                    onChange={handleInputChange}
+                                    placeholder="سعر التكلفة"
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>سعر البيع</label>
+                                <input
+                                    type="number"
+                                    name="sellingPrice"
+                                    className="form-input"
+                                    value={formData.sellingPrice}
+                                    onChange={handleInputChange}
+                                    placeholder="سعر البيع"
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>وصف المنتج</label>
+                                <textarea
+                                    name="description"
+                                    className="form-input"
+                                    value={formData.description}
+                                    onChange={handleInputChange}
+                                    placeholder="وصف تفصيلي للمنتج"
+                                    rows="4"
+                                ></textarea>
+                            </div>
+
+                            <div className="form-group">
+                                <label>طريقة الدفع</label>
+                                <select
+                                    name="paymentMethod"
+                                    className="form-input"
+                                    value={formData.paymentMethod}
+                                    onChange={handleInputChange}
+                                    style={{
+                                        padding: '12px',
+                                        borderRadius: '8px',
+                                        border: '1.5px solid #e0e0fe',
+                                        fontSize: '1rem',
+                                        width: '100%',
+                                        backgroundColor: 'white'
+                                    }}
+                                >
+                                    <option value="asiacell">آسياسيل</option>
+                                    <option value="zain">زين كاش</option>
+                                    <option value="rafidain">الرافدين</option>
+                                    <option value="crypto">كربتو</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" className="submit-btn">
+                                تسجيل المنتج
+                            </button>
+                        </form>
+                    </div>
+                );
+            case 'capital':
+                return renderCapitalSection();
+            case 'analytics':
+                return renderAnalyticsSection();
+            case 'archive':
+                return (
+                    <div className="archive-section">
+                        <h2>أرشيف الطلبات</h2>
+                        <div className="archive-filters">
+                            <input type="date" />
+                            <select>
+                                <option value="all">كل الطلبات</option>
+                                <option value="completed">المكتملة</option>
+                                <option value="cancelled">الملغية</option>
+                            </select>
+                        </div>
+                    </div>
+                );
+            default:
+                return <div>اختر قسماً</div>;
+        }
     };
 
     return (
