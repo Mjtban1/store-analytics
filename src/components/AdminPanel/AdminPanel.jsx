@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
-import { collection, getDocs, deleteDoc, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 import './AdminPanel.css';
 
 const AdminPanel = () => {
@@ -47,15 +47,66 @@ const AdminPanel = () => {
         }
     };
 
-    const handleDelete = async (id, collection) => {
-        if (window.confirm('هل أنت متأكد من حذف هذا العنصر؟')) {
-            try {
-                await deleteDoc(doc(db, collection, id));
-                await fetchData(); // إعادة تحميل البيانات
-            } catch (error) {
-                console.error('Error deleting document:', error);
+    const handleDelete = async (id, collectionName) => {
+        try {
+            if (window.confirm('هل أنت متأكد من حذف هذا العنصر؟')) {
+                // جلب البيانات قبل الحذف
+                const docRef = doc(db, collectionName, id);
+                const docSnap = await getDoc(docRef);
+                
+                if (!docSnap.exists()) {
+                    throw new Error('العنصر غير موجود');
+                }
+
+                const itemData = docSnap.data();
+
+                // حذف العنصر
+                await deleteDoc(docRef);
+
+                // تحديث واجهة المستخدم
+                if (collectionName === 'capital') {
+                    setData(prev => ({
+                        ...prev,
+                        capital: prev.capital.filter(item => item.id !== id)
+                    }));
+                } else if (collectionName === 'orders') {
+                    setData(prev => ({
+                        ...prev,
+                        orders: prev.orders.filter(item => item.id !== id)
+                    }));
+                }
+
+                // إظهار رسالة نجاح
+                showSuccessMessage('تم الحذف بنجاح');
             }
+        } catch (error) {
+            console.error('Error deleting document:', error);
+            showErrorMessage('حدث خطأ أثناء الحذف');
         }
+    };
+
+    // إضافة دالة لإظهار رسائل النجاح
+    const showSuccessMessage = (message) => {
+        const successMessage = document.createElement('div');
+        successMessage.className = 'success-message';
+        successMessage.textContent = message;
+        document.body.appendChild(successMessage);
+        
+        setTimeout(() => {
+            successMessage.remove();
+        }, 3000);
+    };
+
+    // إضافة دالة لإظهار رسائل الخطأ
+    const showErrorMessage = (message) => {
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'error-message';
+        errorMessage.textContent = message;
+        document.body.appendChild(errorMessage);
+        
+        setTimeout(() => {
+            errorMessage.remove();
+        }, 3000);
     };
 
     const handleUpdateUser = async (userId, userData) => {
@@ -285,9 +336,9 @@ const AdminPanel = () => {
                                 <tbody>
                                     {data.capital.map(item => (
                                         <tr key={item.id}>
-                                            <td>{item.amount}</td>
-                                            <td>{item.note}</td>
-                                            <td>{new Date(item.date).toLocaleDateString()}</td>
+                                            <td>{Number(item.amount).toLocaleString()} د.ع</td>
+                                            <td>{item.note || '-'}</td>
+                                            <td>{item.date ? new Date(item.date.seconds * 1000).toLocaleDateString() : '-'}</td>
                                             <td>
                                                 <button 
                                                     onClick={() => handleDelete(item.id, 'capital')}

@@ -306,6 +306,42 @@
     }
 }
 
+/* إضافة أنماط للرسائل */
+.success-message,
+.error-message {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1100;
+    animation: slideInDown 0.3s ease-out;
+}
+
+.success-message {
+    background: #4caf50;
+    color: white;
+}
+
+.error-message {
+    background: #f44336;
+    color: white;
+}
+
+@keyframes slideInDown {
+    from {
+        transform: translate(-50%, -20px);
+        opacity: 0;
+    }
+    to {
+        transform: translate(-50%, 0);
+        opacity: 1;
+}
+
 /* تحسينات للموبايل */
 @media (max-width: 768px) {
     .admin-panel {
