@@ -129,6 +129,7 @@ const Dashboard = ({ orders: initialOrders }) => {
         try {
             const costPrice = formData.commissionOnly ? 0 : Number(formData.costPrice);
 
+            // التحقق من كفاية رأس المال
             if (!formData.commissionOnly && costPrice > totalCapital) {
                 setInsufficientModal({
                     isOpen: true,
@@ -143,34 +144,32 @@ const Dashboard = ({ orders: initialOrders }) => {
                 timestamp: new Date(),
                 costPrice: costPrice,
                 sellingPrice: Number(formData.sellingPrice),
-                profit: calculateProfit(formData.sellingPrice, costPrice, formData.paymentMethod, formData.commissionOnly),
-                id: Date.now().toString(),
+                id: Date.now().toString()
             };
 
+            // إضافة الطلب
             const orderRef = doc(collection(db, 'orders'));
             await setDoc(orderRef, orderData);
 
-            // تحديث رأس المال مع القيمة السالبة للتكلفة
-            if (!formData.commissionOnly) {
-                await updateCapital(-costPrice, 'deduction', 'خصم تكلفة طلب جديد');
+            // خصم التكلفة من رأس المال
+            if (!formData.commissionOnly && costPrice > 0) {
+                const success = await updateCapital(costPrice, 'deduction', `خصم تكلفة طلب: ${orderData.productName}`);
+                if (!success) {
+                    throw new Error('فشل تحديث رأس المال');
+                }
             }
 
-            setFormData({
-                productName: '',
-                costPrice: '',
-                sellingPrice: '',
-                description: '',
-                serviceType: 'games',
-                subType: '',
-                paymentMethod: 'asiacell',
-                customerName: '',
-                commissionOnly: false
-            });
-
+            // إعادة تعيين النموذج
+            resetForm();
             showSuccessMessage('تم إضافة الطلب بنجاح');
+            
+            // تحديث البيانات مباشرة
+            await fetchOrders();
+            await fetchCapitalHistory();
+
         } catch (error) {
             console.error("Error adding order:", error);
-            showErrorMessage('حدث خطأ أثناء تسجيل الطلب');
+            showErrorMessage('حدث خطأ أثناء إضافة الطلب');
         }
     };
 

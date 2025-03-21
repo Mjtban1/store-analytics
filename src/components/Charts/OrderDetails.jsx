@@ -114,45 +114,38 @@ const OrderDetails = ({ orders: initialOrders, onUpdateOrder }) => {
         try {
             if (!deleteConfirm.orderId) return;
 
+            // جلب بيانات الطلب قبل الحذف
             const orderRef = doc(db, 'orders', deleteConfirm.orderId);
+            const orderSnap = await getDoc(orderRef);
             
-            // الحصول على بيانات الطلب قبل حذفه
-            const orderDoc = await getDoc(orderRef);
-            if (!orderDoc.exists()) {
-                throw new Error('Order not found');
+            if (!orderSnap.exists()) {
+                throw new Error('الطلب غير موجود');
             }
 
-            const orderData = orderDoc.data();
+            const orderData = orderSnap.data();
 
-            // حذف الطلب
+            // حذف الطلب أولاً
             await deleteDoc(orderRef);
 
-            // إرجاع سعر التكلفة إلى رأس المال إذا لم يكن عمولة فقط
-            if (orderData && !orderData.commissionOnly) {
+            // إضافة سعر التكلفة إلى رأس المال
+            if (!orderData.commissionOnly && orderData.costPrice) {
                 const capitalRef = doc(collection(db, 'capital'));
                 await setDoc(capitalRef, {
                     amount: Number(orderData.costPrice),
                     date: new Date(),
-                    note: 'استرجاع من الطلبات المحذوفة',
+                    note: `استرجاع تكلفة الطلب: ${orderData.productName}`,
                     type: 'addition'
                 });
             }
 
-            // تحديث الحالة المحلية
-            setLocalOrders(prevOrders => 
-                prevOrders.filter(order => order.id !== deleteConfirm.orderId)
-            );
-
-            // إذا كان هناك دالة تحديث من المكون الأب
-            if (onUpdateOrder) {
-                onUpdateOrder(deleteConfirm.orderId, null);
-            }
-
+            // تحديث الواجهة
+            setLocalOrders(prev => prev.filter(order => order.id !== deleteConfirm.orderId));
             setDeleteConfirm({ isOpen: false, orderId: null });
+            
             showSuccessMessage('تم حذف الطلب بنجاح');
 
         } catch (error) {
-            console.error("Error deleting order:", error);
+            console.error("Error in handleConfirmDelete:", error);
             showErrorMessage('حدث خطأ أثناء حذف الطلب');
         }
     };
