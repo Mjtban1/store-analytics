@@ -112,7 +112,9 @@ const OrderDetails = ({ orders: initialOrders, onUpdateOrder }) => {
     // دالة لحذف الطلب
     const handleConfirmDelete = async () => {
         try {
-            if (!deleteConfirm.orderId) return;
+            if (!deleteConfirm.orderId) {
+                throw new Error('معرف الطلب غير موجود');
+            }
 
             // جلب بيانات الطلب قبل الحذف
             const orderRef = doc(db, 'orders', deleteConfirm.orderId);
@@ -124,11 +126,11 @@ const OrderDetails = ({ orders: initialOrders, onUpdateOrder }) => {
 
             const orderData = orderSnap.data();
 
-            // حذف الطلب أولاً
+            // حذف الطلب من Firestore
             await deleteDoc(orderRef);
 
-            // إضافة سعر التكلفة إلى رأس المال
-            if (!orderData.commissionOnly && orderData.costPrice) {
+            // إرجاع سعر التكلفة إلى رأس المال في حالة لم يكن عمولة فقط
+            if (!orderData.commissionOnly && orderData.costPrice > 0) {
                 const capitalRef = doc(collection(db, 'capital'));
                 await setDoc(capitalRef, {
                     amount: Number(orderData.costPrice),
@@ -138,15 +140,25 @@ const OrderDetails = ({ orders: initialOrders, onUpdateOrder }) => {
                 });
             }
 
-            // تحديث الواجهة
-            setLocalOrders(prev => prev.filter(order => order.id !== deleteConfirm.orderId));
+            // تحديث واجهة المستخدم مباشرة
+            setLocalOrders(prevOrders => 
+                prevOrders.filter(order => order.id !== deleteConfirm.orderId)
+            );
+
+            // إغلاق نافذة التأكيد
             setDeleteConfirm({ isOpen: false, orderId: null });
             
+            // إظهار رسالة النجاح
             showSuccessMessage('تم حذف الطلب بنجاح');
+            
+            // إعادة تحميل البيانات للتأكد من المزامنة
+            if (onUpdateOrder) {
+                onUpdateOrder(deleteConfirm.orderId, null);
+            }
 
         } catch (error) {
-            console.error("Error in handleConfirmDelete:", error);
-            showErrorMessage('حدث خطأ أثناء حذف الطلب');
+            console.error("Error deleting order:", error);
+            showErrorMessage(error.message || 'حدث خطأ أثناء حذف الطلب');
         }
     };
 
@@ -173,8 +185,10 @@ const OrderDetails = ({ orders: initialOrders, onUpdateOrder }) => {
         document.body.appendChild(successMessage);
         
         setTimeout(() => {
-            successMessage.remove();
-        }, 1500);
+            if (successMessage.parentNode) {
+                successMessage.parentNode.removeChild(successMessage);
+            }
+        }, 3000);
     };
 
     // دالة إظهار رسالة الخطأ
@@ -185,8 +199,10 @@ const OrderDetails = ({ orders: initialOrders, onUpdateOrder }) => {
         document.body.appendChild(errorMessage);
         
         setTimeout(() => {
-            errorMessage.remove();
-        }, 1500);
+            if (errorMessage.parentNode) {
+                errorMessage.parentNode.removeChild(errorMessage);
+            }
+        }, 3000);
     };
 
     // دالة لإغلاق نافذة التعديل
@@ -283,7 +299,7 @@ const OrderDetails = ({ orders: initialOrders, onUpdateOrder }) => {
         if (!deleteConfirm.isOpen) return null;
 
         return (
-            <div className="delete-modal-overlay" onClick={() => setDeleteConfirm({ isOpen: false, orderId: null })}>
+            <div className="delete-modal-overlay">
                 <div className="delete-modal" onClick={e => e.stopPropagation()}>
                     <div className="delete-modal-content">
                         <div className="delete-modal-icon">🗑️</div>
@@ -291,7 +307,10 @@ const OrderDetails = ({ orders: initialOrders, onUpdateOrder }) => {
                         <p>هل أنت متأكد من حذف هذا الطلب؟</p>
                         <p className="delete-modal-warning">لا يمكن التراجع عن هذا الإجراء.</p>
                         <div className="delete-modal-buttons">
-                            <button className="delete-confirm-btn" onClick={handleConfirmDelete}>
+                            <button 
+                                className="delete-confirm-btn" 
+                                onClick={handleConfirmDelete}
+                            >
                                 نعم، احذف
                             </button>
                             <button 
