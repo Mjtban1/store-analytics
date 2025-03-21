@@ -1409,18 +1409,46 @@ const Dashboard = ({ orders: initialOrders }) => {
     }, []);
 
     // إضافة دالة تحديث الطلبات
-    const handleOrderUpdate = (orderId, updatedData) => {
-        setOrders(prevOrders => {
-            if (!updatedData) {
-                // إذا كان updatedData هو null، فهذا يعني حذف الطلب
-                return prevOrders.filter(order => order.id !== orderId);
+    const handleOrderUpdate = useCallback(async (orderId, action) => {
+        try {
+            switch (action) {
+                case 'delete':
+                    const orderRef = doc(db, 'orders', orderId);
+                    const orderSnap = await getDoc(orderRef);
+                    
+                    if (!orderSnap.exists()) {
+                        throw new Error('الطلب غير موجود');
+                    }
+
+                    const orderData = orderSnap.data();
+                    
+                    // حذف الطلب
+                    await deleteDoc(orderRef);
+
+                    // إرجاع رأس المال
+                    if (!orderData.commissionOnly && orderData.costPrice > 0) {
+                        await updateCapital(
+                            orderData.costPrice,
+                            'addition',
+                            `استرجاع تكلفة الطلب: ${orderData.productName}`
+                        );
+                    }
+
+                    // تحديث القوائم
+                    setOrders(prev => prev.filter(order => order.id !== orderId));
+                    break;
+
+                default:
+                    // تحديث القوائم
+                    await fetchOrders();
+                    await fetchCapitalHistory();
+                    break;
             }
-            // تحديث الطلب
-            return prevOrders.map(order => 
-                order.id === orderId ? { ...order, ...updatedData } : order
-            );
-        });
-    };
+        } catch (error) {
+            console.error('Error in handleOrderUpdate:', error);
+            showErrorMessage('حدث خطأ في تحديث البيانات');
+        }
+    }, [updateCapital, fetchOrders, fetchCapitalHistory]);
 
     return (
         <div className="dashboard">

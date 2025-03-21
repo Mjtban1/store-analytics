@@ -60,6 +60,10 @@ const OrderDetails = ({ orders: initialOrders, onUpdateOrder }) => {
 
     // دالة لفتح نافذة تأكيد الحذف
     const handleDeleteClick = (orderId) => {
+        if (!orderId) {
+            showErrorMessage('معرف الطلب غير صالح');
+            return;
+        }
         setDeleteConfirm({
             isOpen: true,
             orderId
@@ -113,34 +117,39 @@ const OrderDetails = ({ orders: initialOrders, onUpdateOrder }) => {
     const handleConfirmDelete = async () => {
         try {
             if (!deleteConfirm.orderId) {
-                throw new Error('معرف الطلب غير موجود');
+                throw new Error('معرف الطلب غير صالح');
             }
 
-            // جلب بيانات الطلب قبل الحذف
+            // جلب الطلب من Firestore
             const orderRef = doc(db, 'orders', deleteConfirm.orderId);
             const orderSnap = await getDoc(orderRef);
-            
+
             if (!orderSnap.exists()) {
-                throw new Error('الطلب غير موجود');
+                throw new Error('لم يتم العثور على الطلب');
             }
 
             const orderData = orderSnap.data();
-
-            // حذف الطلب من Firestore
+            
+            // محاولة حذف الطلب
             await deleteDoc(orderRef);
 
-            // إرجاع سعر التكلفة إلى رأس المال في حالة لم يكن عمولة فقط
+            // إضافة رأس المال إذا لم يكن عمولة فقط
             if (!orderData.commissionOnly && orderData.costPrice > 0) {
-                const capitalRef = doc(collection(db, 'capital'));
-                await setDoc(capitalRef, {
-                    amount: Number(orderData.costPrice),
-                    date: new Date(),
-                    note: `استرجاع تكلفة الطلب: ${orderData.productName}`,
-                    type: 'addition'
-                });
+                try {
+                    const capitalRef = doc(collection(db, 'capital'));
+                    await setDoc(capitalRef, {
+                        amount: Number(orderData.costPrice),
+                        date: new Date(),
+                        note: `استرجاع تكلفة الطلب: ${orderData.productName}`,
+                        type: 'addition'
+                    });
+                } catch (capitalError) {
+                    console.error('Error updating capital:', capitalError);
+                    // عدم إيقاف العملية في حالة فشل تحديث رأس المال
+                }
             }
 
-            // تحديث واجهة المستخدم مباشرة
+            // تحديث القائمة المحلية
             setLocalOrders(prevOrders => 
                 prevOrders.filter(order => order.id !== deleteConfirm.orderId)
             );
@@ -150,14 +159,14 @@ const OrderDetails = ({ orders: initialOrders, onUpdateOrder }) => {
             
             // إظهار رسالة النجاح
             showSuccessMessage('تم حذف الطلب بنجاح');
-            
-            // إعادة تحميل البيانات للتأكد من المزامنة
+
+            // إعلام المكون الأب بالتغيير
             if (onUpdateOrder) {
                 onUpdateOrder(deleteConfirm.orderId, null);
             }
 
         } catch (error) {
-            console.error("Error deleting order:", error);
+            console.error('Error deleting order:', error);
             showErrorMessage(error.message || 'حدث خطأ أثناء حذف الطلب');
         }
     };
