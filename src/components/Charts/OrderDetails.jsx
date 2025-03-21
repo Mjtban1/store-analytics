@@ -76,7 +76,7 @@ const OrderDetails = ({ orders: initialOrders, onUpdateOrder }) => {
 
         try {
             if (!editFormData.productName || !editFormData.costPrice || !editFormData.sellingPrice) {
-                alert('يرجى ملء جميع الحقول المطلوبة');
+                showErrorMessage('يرجى ملء جميع الحقول المطلوبة');
                 return;
             }
 
@@ -89,27 +89,27 @@ const OrderDetails = ({ orders: initialOrders, onUpdateOrder }) => {
 
             await updateDoc(doc(db, 'orders', editingOrder.id), updatedData);
             
-            if (onUpdateOrder) {
-                onUpdateOrder(editingOrder.id, updatedData);
-            }
+            // تحديث القائمة المحلية مباشرة
+            setLocalOrders(prevOrders => 
+                prevOrders.map(order => 
+                    order.id === editingOrder.id 
+                        ? { ...order, ...updatedData }
+                        : order
+                )
+            );
 
             setEditModalOpen(false);
             setEditingOrder(null);
             setEditFormData(null);
             
-            // إظهار رسالة نجاح مخصصة
-            const successMessage = document.createElement('div');
-            successMessage.className = 'success-message';
-            successMessage.textContent = 'تم تحديث الطلب بنجاح';
-            document.body.appendChild(successMessage);
-            
-            setTimeout(() => {
-                successMessage.remove();
-                window.location.reload();
-            }, 1500);
+            showSuccessMessage('تم تحديث الطلب بنجاح');
+
+            if (onUpdateOrder) {
+                onUpdateOrder(editingOrder.id, 'update');
+            }
         } catch (error) {
             console.error("Error updating order:", error);
-            alert('حدث خطأ أثناء تحديث الطلب');
+            showErrorMessage('حدث خطأ أثناء تحديث الطلب');
         }
     };
 
@@ -120,7 +120,7 @@ const OrderDetails = ({ orders: initialOrders, onUpdateOrder }) => {
                 throw new Error('معرف الطلب غير صالح');
             }
 
-            // جلب الطلب من Firestore
+            // جلب بيانات الطلب قبل الحذف
             const orderRef = doc(db, 'orders', deleteConfirm.orderId);
             const orderSnap = await getDoc(orderRef);
 
@@ -130,7 +130,7 @@ const OrderDetails = ({ orders: initialOrders, onUpdateOrder }) => {
 
             const orderData = orderSnap.data();
             
-            // محاولة حذف الطلب
+            // حذف الطلب من Firestore
             await deleteDoc(orderRef);
 
             // إضافة رأس المال إذا لم يكن عمولة فقط
@@ -145,11 +145,10 @@ const OrderDetails = ({ orders: initialOrders, onUpdateOrder }) => {
                     });
                 } catch (capitalError) {
                     console.error('Error updating capital:', capitalError);
-                    // عدم إيقاف العملية في حالة فشل تحديث رأس المال
                 }
             }
 
-            // تحديث القائمة المحلية
+            // تحديث القائمة المحلية مباشرة بدون إعادة تحميل
             setLocalOrders(prevOrders => 
                 prevOrders.filter(order => order.id !== deleteConfirm.orderId)
             );
@@ -162,7 +161,7 @@ const OrderDetails = ({ orders: initialOrders, onUpdateOrder }) => {
 
             // إعلام المكون الأب بالتغيير
             if (onUpdateOrder) {
-                onUpdateOrder(deleteConfirm.orderId, null);
+                onUpdateOrder(deleteConfirm.orderId, 'delete');
             }
 
         } catch (error) {
@@ -197,7 +196,7 @@ const OrderDetails = ({ orders: initialOrders, onUpdateOrder }) => {
             if (successMessage.parentNode) {
                 successMessage.parentNode.removeChild(successMessage);
             }
-        }, 3000);
+        }, 2000); // تقليل وقت ظهور الرسالة
     };
 
     // دالة إظهار رسالة الخطأ
