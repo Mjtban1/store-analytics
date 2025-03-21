@@ -7,7 +7,14 @@ import OrderDetails from '../Charts/OrderDetails';
 import './Dashboard.css';
 import { useNavigate } from 'react-router-dom';
 
-const Dashboard = ({ orders: initialOrders }) => {
+const Dashboard = () => {
+    const [activeTab, setActiveTab] = useState('orders');
+    const [orders, setOrders] = useState([]);
+    const [capitalHistory, setCapitalHistory] = useState([]);
+    const [totalCapital, setTotalCapital] = useState(0);
+    const [loading, setLoading] = useState(true);
+    // Removed duplicate declaration of insufficientModal
+
     const [activeSection, setActiveSection] = useState('orders');
     const [showCustomInput, setShowCustomInput] = useState(false);
     const [customProductName, setCustomProductName] = useState('');
@@ -27,13 +34,11 @@ const Dashboard = ({ orders: initialOrders }) => {
         customerName: '', // إضافة حقل اسم العميل
         commissionOnly: false // إضافة حقل للعمولة فقط
     });
-    const [capitalHistory, setCapitalHistory] = useState([]);
     const [newCapital, setNewCapital] = useState({
         amount: '',
         note: '',
         date: new Date().toISOString().split('T')[0]
     });
-    const [totalCapital, setTotalCapital] = useState(0);
     const [capitalFilter, setCapitalFilter] = useState({
         startDate: '',
         endDate: ''
@@ -53,7 +58,6 @@ const Dashboard = ({ orders: initialOrders }) => {
         requiredAmount: 0
     });
 
-    const [orders, setOrders] = useState(initialOrders || []);
     const [analytics, setAnalytics] = useState({
         totalRevenue: 0,
         totalCost: 0,
