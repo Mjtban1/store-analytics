@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, collection, onSnapshot, query, getDoc, setDoc } from 'firebase/firestore';
 
-const OrderDetails = ({ orders, onUpdateOrder }) => {
+const OrderDetails = ({ orders: initialOrders, onUpdateOrder }) => {
     const [filterType, setFilterType] = useState('all');
     const [sortBy, setSortBy] = useState('date');
     const [sortOrder, setSortOrder] = useState('desc');
@@ -11,6 +11,38 @@ const OrderDetails = ({ orders, onUpdateOrder }) => {
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [editingOrder, setEditingOrder] = useState(null);
     const [editFormData, setEditFormData] = useState(null);
+
+    // إضافة حالة لنافذة تأكيد الحذف
+    const [deleteConfirm, setDeleteConfirm] = useState({
+        isOpen: false,
+        orderId: null
+    });
+
+    // إضافة state جديدة للطلبات
+    const [localOrders, setLocalOrders] = useState(initialOrders || []);
+
+    // تحديث useEffect لمزامنة الطلبات عند تغيير initialOrders
+    useEffect(() => {
+        setLocalOrders(initialOrders || []);
+    }, [initialOrders]);
+
+    // إضافة مراقب للتغييرات في قاعدة البيانات
+    useEffect(() => {
+        const ordersQuery = query(collection(db, 'orders'));
+        
+        const unsubscribe = onSnapshot(ordersQuery, (snapshot) => {
+            const updatedOrders = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            setLocalOrders(updatedOrders);
+        });
+
+        // تنظيف المراقب عند إزالة المكون
+        return () => {
+            unsubscribe();
+        };
+    }, []);
 
     // دالة لفتح نافذة التعديل
     const handleEditClick = (order) => {
@@ -24,6 +56,14 @@ const OrderDetails = ({ orders, onUpdateOrder }) => {
             description: order.description || ''
         });
         setEditModalOpen(true);
+    };
+
+    // دالة لفتح نافذة تأكيد الحذف
+    const handleDeleteClick = (orderId) => {
+        setDeleteConfirm({
+            isOpen: true,
+            orderId
+        });
     };
 
     // تحسين دالة حفظ التعديلات
@@ -67,6 +107,93 @@ const OrderDetails = ({ orders, onUpdateOrder }) => {
             console.error("Error updating order:", error);
             alert('حدث خطأ أثناء تحديث الطلب');
         }
+    };
+
+    // دالة لحذف الطلب
+    const handleConfirmDelete = async () => {
+        try {
+            if (!deleteConfirm.orderId) return;
+
+            const orderRef = doc(db, 'orders', deleteConfirm.orderId);
+            
+            // الحصول على بيانات الطلب قبل حذفه
+            const orderDoc = await getDoc(orderRef);
+            if (!orderDoc.exists()) {
+                throw new Error('Order not found');
+            }
+
+            const orderData = orderDoc.data();
+
+            // حذف الطلب
+            await deleteDoc(orderRef);
+
+            // إرجاع سعر التكلفة إلى رأس المال إذا لم يكن عمولة فقط
+            if (orderData && !orderData.commissionOnly) {
+                const capitalRef = doc(collection(db, 'capital'));
+                await setDoc(capitalRef, {
+                    amount: Number(orderData.costPrice),
+                    date: new Date(),
+                    note: 'استرجاع من الطلبات المحذوفة',
+                    type: 'addition'
+                });
+            }
+
+            // تحديث الحالة المحلية
+            setLocalOrders(prevOrders => 
+                prevOrders.filter(order => order.id !== deleteConfirm.orderId)
+            );
+
+            // إذا كان هناك دالة تحديث من المكون الأب
+            if (onUpdateOrder) {
+                onUpdateOrder(deleteConfirm.orderId, null);
+            }
+
+            setDeleteConfirm({ isOpen: false, orderId: null });
+            showSuccessMessage('تم حذف الطلب بنجاح');
+
+        } catch (error) {
+            console.error("Error deleting order:", error);
+            showErrorMessage('حدث خطأ أثناء حذف الطلب');
+        }
+    };
+
+    // دالة تحديث رأس المال
+    const updateCapital = async (amount) => {
+        try {
+            const capitalRef = doc(collection(db, 'capital'));
+            await setDoc(capitalRef, {
+                amount: amount,
+                date: new Date(),
+                note: 'استرجاع من الطلبات المحذوفة',
+                type: 'addition'
+            });
+        } catch (error) {
+            console.error("Error updating capital:", error);
+        }
+    };
+
+    // دالة إظهار رسالة النجاح
+    const showSuccessMessage = (message) => {
+        const successMessage = document.createElement('div');
+        successMessage.className = 'success-message';
+        successMessage.textContent = message;
+        document.body.appendChild(successMessage);
+        
+        setTimeout(() => {
+            successMessage.remove();
+        }, 1500);
+    };
+
+    // دالة إظهار رسالة الخطأ
+    const showErrorMessage = (message) => {
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'error-message';
+        errorMessage.textContent = message;
+        document.body.appendChild(errorMessage);
+        
+        setTimeout(() => {
+            errorMessage.remove();
+        }, 1500);
     };
 
     // دالة لإغلاق نافذة التعديل
@@ -158,10 +285,39 @@ const OrderDetails = ({ orders, onUpdateOrder }) => {
         );
     };
 
-    const calculateProfit = (selling, cost) => {
+    // مكون نافذة تأكيد الحذف
+    const DeleteConfirmModal = () => {
+        if (!deleteConfirm.isOpen) return null;
+
+        return (
+            <div className="delete-modal-overlay" onClick={() => setDeleteConfirm({ isOpen: false, orderId: null })}>
+                <div className="delete-modal" onClick={e => e.stopPropagation()}>
+                    <div className="delete-modal-content">
+                        <div className="delete-modal-icon">🗑️</div>
+                        <h3>تأكيد الحذف</h3>
+                        <p>هل أنت متأكد من حذف هذا الطلب؟</p>
+                        <p className="delete-modal-warning">لا يمكن التراجع عن هذا الإجراء.</p>
+                        <div className="delete-modal-buttons">
+                            <button className="delete-confirm-btn" onClick={handleConfirmDelete}>
+                                نعم، احذف
+                            </button>
+                            <button 
+                                className="delete-cancel-btn" 
+                                onClick={() => setDeleteConfirm({ isOpen: false, orderId: null })}
+                            >
+                                إلغاء
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const calculateProfit = (selling, cost, paymentMethod) => {
         const sellingPrice = Number(selling);
         const costPrice = Number(cost);
-        const commission = sellingPrice * 0.05;
+        const commission = paymentMethod === 'asiacell' ? sellingPrice * 0.10 : 0; // عمولة 10% فقط لآسياسيل
         return sellingPrice - costPrice - commission;
     };
 
@@ -184,6 +340,56 @@ const OrderDetails = ({ orders, onUpdateOrder }) => {
             return 'تاريخ غير صالح';
         }
     };
+
+    // تحديث أنماط الرسائل
+    const additionalStyles = `
+        .success-message,
+        .error-message {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1100;
+            animation: slideInDown 0.3s ease-out;
+        }
+
+        .success-message {
+            background: #4caf50;
+            color: white;
+        }
+
+        .error-message {
+            background: #f44336;
+            color: white;
+        }
+
+        @keyframes slideInDown {
+            from {
+                transform: translate(-50%, -20px);
+                opacity: 0;
+            }
+            to {
+                transform: translate(-50%, 0);
+                opacity: 1;
+            }
+        }
+    `;
+
+    // إضافة الأنماط الجديدة
+    React.useEffect(() => {
+        const styleSheet = document.createElement('style');
+        styleSheet.textContent = additionalStyles;
+        document.head.appendChild(styleSheet);
+
+        return () => {
+            document.head.removeChild(styleSheet);
+        };
+    }, []);
 
     return (
         <div className="orders-details-container" style={{
@@ -282,7 +488,7 @@ const OrderDetails = ({ orders, onUpdateOrder }) => {
                     </tr>
                 </thead>
                 <tbody>
-                    {orders
+                    {localOrders // استخدام localOrders بدلاً من orders
                         ?.filter(order => filterType === 'all' ? true : order.serviceType === filterType)
                         .sort((a, b) => {
                             const sortModifier = sortOrder === 'asc' ? 1 : -1;
@@ -290,7 +496,10 @@ const OrderDetails = ({ orders, onUpdateOrder }) => {
                                 case 'date':
                                     return sortModifier * (b.timestamp.seconds - a.timestamp.seconds);
                                 case 'profit':
-                                    return sortModifier * (calculateProfit(b.sellingPrice, b.costPrice) - calculateProfit(a.sellingPrice, a.costPrice));
+                                    return sortModifier * (
+                                        calculateProfit(b.sellingPrice, b.costPrice, b.paymentMethod) - 
+                                        calculateProfit(a.sellingPrice, a.costPrice, a.paymentMethod)
+                                    );
                                 case 'price':
                                     return sortModifier * (Number(b.sellingPrice) - Number(a.sellingPrice));
                                 default:
@@ -298,12 +507,17 @@ const OrderDetails = ({ orders, onUpdateOrder }) => {
                             }
                         })
                         .map((order, index) => (
-                            <tr key={order.id || index} style={{
-                                background: 'white',
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                                borderRadius: '8px',
-                                transition: 'transform 0.2s ease'
-                            }}>
+                            <tr 
+                                key={order.id || index} 
+                                className="order-row"
+                                style={{
+                                    animation: 'fadeIn 0.3s ease-out',
+                                    background: 'white',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                                    borderRadius: '8px',
+                                    transition: 'all 0.3s ease'
+                                }}
+                            >
                                 <td style={{ padding: '15px' }}>{index + 1}</td>
                                 <td style={{ padding: '15px' }}>{order.productName}</td>
                                 <td style={{ padding: '15px' }}>
@@ -325,12 +539,23 @@ const OrderDetails = ({ orders, onUpdateOrder }) => {
                                 <td style={{ padding: '15px' }}>{formatDate(order.timestamp)}</td>
                                 <td style={{ padding: '15px' }}>{Number(order.costPrice).toLocaleString()} د.ع</td>
                                 <td style={{ padding: '15px' }}>{Number(order.sellingPrice).toLocaleString()} د.ع</td>
-                                <td style={{ padding: '15px' }}>{(Number(order.sellingPrice) * 0.05).toLocaleString()} د.ع</td>
+                                <td style={{ padding: '15px' }}>
+                                    {order.paymentMethod === 'asiacell' 
+                                        ? `${(Number(order.sellingPrice) * 0.10).toLocaleString()} د.ع`
+                                        : '0 د.ع'
+                                    }
+                                </td>
                                 <td style={{ 
                                     padding: '15px',
-                                    color: calculateProfit(order.sellingPrice, order.costPrice) > 0 ? '#4CAF50' : '#dc3545'
+                                    color: calculateProfit(order.sellingPrice, order.costPrice, order.paymentMethod) > 0 
+                                        ? '#4CAF50' 
+                                        : '#dc3545'
                                 }}>
-                                    {calculateProfit(order.sellingPrice, order.costPrice).toLocaleString()} د.ع
+                                    {calculateProfit(
+                                        order.sellingPrice, 
+                                        order.costPrice, 
+                                        order.paymentMethod
+                                    ).toLocaleString()} د.ع
                                 </td>
                                 <td style={{ padding: '15px', textAlign: 'right' }}>
                                     <span style={{
@@ -366,7 +591,13 @@ const OrderDetails = ({ orders, onUpdateOrder }) => {
                                     >
                                         ✏️
                                     </button>
-                                    <button style={{ border: 'none', background: 'none', cursor: 'pointer' }} title="حذف">🗑️</button>
+                                    <button 
+                                        style={{ border: 'none', background: 'none', cursor: 'pointer' }} 
+                                        title="حذف"
+                                        onClick={() => handleDeleteClick(order.id)}
+                                    >
+                                        🗑️
+                                    </button>
                                     <button style={{ border: 'none', background: 'none', cursor: 'pointer' }} title="إنشاء إيصال">📄</button>
                                     <button style={{ border: 'none', background: 'none', cursor: 'pointer' }} title="أرشفة">📦</button>
                                 </td>
@@ -375,6 +606,7 @@ const OrderDetails = ({ orders, onUpdateOrder }) => {
                 </tbody>
             </table>
             <EditModal />
+            <DeleteConfirmModal />
         </div>
     );
 };
@@ -482,7 +714,7 @@ const styles = `.stat-card-animated {
 
 @keyframes patternMove {
     from {
-        background-position: 0 0;
+        background-position: 0% 0%;
     }
     to {
         background-position: 40px 40px;
@@ -813,6 +1045,166 @@ const styles = `.stat-card-animated {
         height: 40px;
         font-size: 16px;
     }
+}
+
+/* أنماط نافذة تأكيد الحذف */
+.delete-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.delete-modal {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    animation: scaleIn 0.3s ease-out;
+}
+
+.delete-modal-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.delete-modal-icon {
+    font-size: 3rem;
+    color: #dc3545;
+    animation: shake 0.5s ease-in-out;
+}
+
+.delete-modal h3 {
+    color: #dc3545;
+    margin: 0;
+    font-size: 1.4rem;
+}
+
+.delete-modal p {
+    color: #666;
+    margin: 0;
+}
+
+.delete-modal-warning {
+    color: #dc3545;
+    font-size: 0.9rem;
+}
+
+.delete-modal-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+.delete-confirm-btn,
+.delete-cancel-btn {
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.delete-confirm-btn {
+    background: #dc3545;
+    color: white;
+}
+
+.delete-confirm-btn:hover {
+    background: #c82333;
+}
+
+.delete-cancel-btn {
+    background: #f8f9fa;
+    color: #666;
+    border: 1px solid #ddd;
+}
+
+.delete-cancel-btn:hover {
+    background: #e2e6ea;
+}
+
+@keyframes shake {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-10deg); }
+    75% { transform: rotate(10deg); }
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@media (max-width: 480px) {
+    .delete-modal {
+        padding: 20px;
+    }
+
+    .delete-modal h3 {
+        font-size: 1.2rem;
+    }
+
+    .delete-modal-buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .delete-confirm-btn,
+    .delete-cancel-btn {
+        width: 100%;
+        padding: 10px;
+    }
+}
+
+/* أنماط جديدة للتأثيرات البصرية */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+}
+
+.order-row {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.order-row.deleting {
+    animation: fadeOut 0.3s ease-out forwards;
 }
 `;
 

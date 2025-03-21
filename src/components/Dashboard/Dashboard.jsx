@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
-import { collection, addDoc, getDocs, deleteDoc, doc, query, where, orderBy } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, query, where, orderBy, onSnapshot, setDoc } from 'firebase/firestore';
 import RevenueChart from '../Charts/RevenueChart';
 import OrderTypesChart from '../Charts/OrderTypesChart';
 import OrderDetails from '../Charts/OrderDetails';
 import './Dashboard.css';
+import { useNavigate } from 'react-router-dom';
 
 const Dashboard = ({ orders: initialOrders }) => {
     const [activeSection, setActiveSection] = useState('orders');
@@ -22,7 +23,9 @@ const Dashboard = ({ orders: initialOrders }) => {
         description: '',
         serviceType: 'games', // القيمة الافتراضية
         subType: '', // نوع المنتج الفرعي
-        paymentMethod: 'asiacell' // إضافة طريقة الدفع الافتراضية
+        paymentMethod: 'asiacell', // إضافة طريقة الدفع الافتراضية
+        customerName: '', // إضافة حقل اسم العميل
+        commissionOnly: false // إضافة حقل للعمولة فقط
     });
     const [capitalHistory, setCapitalHistory] = useState([]);
     const [newCapital, setNewCapital] = useState({
@@ -84,6 +87,23 @@ const Dashboard = ({ orders: initialOrders }) => {
             icon: `<img src="/icons/3d/archive-3d.png" alt="archive" class="nav-icon" />`,
             activeIcon: `<img src="/icons/3d/archive-3d-active.png" alt="archive" class="nav-icon active" />`,
             description: 'الطلبات المؤرشفة والسجلات'
+        },
+        admin: { 
+            title: 'لوحة التحكم',
+            icon: `<img src="/icons/3d/admin-3d.png" alt="admin" class="nav-icon" />`,
+            activeIcon: `<img src="/icons/3d/admin-3d-active.png" alt="admin" class="nav-icon active" />`,
+            description: 'إدارة النظام والإعدادات'
+        }
+    };
+
+    // إضافة دالة التنقل إلى لوحة التحكم
+    const navigate = useNavigate();
+
+    const handleSectionClick = (key) => {
+        if (key === 'admin') {
+            navigate('/admin');
+        } else {
+            setActiveSection(key);
         }
     };
 
@@ -104,15 +124,12 @@ const Dashboard = ({ orders: initialOrders }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!validateForm()) {
-            alert('يرجى ملء جميع الحقول المطلوبة');
-            return;
-        }
+        if (!validateForm()) return;
 
         try {
-            // التحقق من رأس المال
-            const costPrice = Number(formData.costPrice);
-            if (costPrice > totalCapital) {
+            const costPrice = formData.commissionOnly ? 0 : Number(formData.costPrice);
+
+            if (!formData.commissionOnly && costPrice > totalCapital) {
                 setInsufficientModal({
                     isOpen: true,
                     currentCapital: totalCapital,
@@ -124,27 +141,20 @@ const Dashboard = ({ orders: initialOrders }) => {
             const orderData = {
                 ...formData,
                 timestamp: new Date(),
-                profit: Number(formData.sellingPrice) - Number(formData.costPrice),
-                profitMargin: ((Number(formData.sellingPrice) - Number(formData.costPrice)) / Number(formData.sellingPrice)) * 100
+                costPrice: costPrice,
+                sellingPrice: Number(formData.sellingPrice),
+                profit: calculateProfit(formData.sellingPrice, costPrice, formData.paymentMethod, formData.commissionOnly),
+                id: Date.now().toString(),
             };
 
-            // إضافة الطلب وتحديث رأس المال
-            const orderRef = await addDoc(collection(db, 'orders'), orderData);
-            await addDoc(collection(db, 'capital'), {
-                amount: -costPrice,
-                note: `خصم تكلفة طلب - ${orderData.productName}`,
-                date: new Date().toISOString().split('T')[0],
-                timestamp: new Date(),
-                type: 'expense',
-                orderId: orderRef.id
-            });
+            const orderRef = doc(collection(db, 'orders'));
+            await setDoc(orderRef, orderData);
 
-            // تحديث الحالات
-            setOrders(prev => [...prev, { id: orderRef.id, ...orderData }]);
-            updateAnalytics([...orders, orderData]);
-            await fetchCapitalHistory(); // تحديث رأس المال
+            // تحديث رأس المال مع القيمة السالبة للتكلفة
+            if (!formData.commissionOnly) {
+                await updateCapital(-costPrice, 'deduction', 'خصم تكلفة طلب جديد');
+            }
 
-            // إعادة تعيين النموذج
             setFormData({
                 productName: '',
                 costPrice: '',
@@ -152,14 +162,59 @@ const Dashboard = ({ orders: initialOrders }) => {
                 description: '',
                 serviceType: 'games',
                 subType: '',
-                paymentMethod: 'asiacell'
+                paymentMethod: 'asiacell',
+                customerName: '',
+                commissionOnly: false
             });
 
-            alert('تم تسجيل المنتج بنجاح');
+            showSuccessMessage('تم إضافة الطلب بنجاح');
         } catch (error) {
             console.error("Error adding order:", error);
-            alert('حدث خطأ أثناء تسجيل المنتج');
+            showErrorMessage('حدث خطأ أثناء تسجيل الطلب');
         }
+    };
+
+    // دالة تحديث رأس المال المحسنة
+    const updateCapital = async (amount, type = 'auto', note = '') => {
+        try {
+            if (type === 'auto') {
+                const totalCosts = amount.reduce((sum, order) => {
+                    if (!order.isCommissionOnly) {
+                        return sum + Number(order.costPrice);
+                    }
+                    return sum;
+                }, 0);
+
+                await fetchCapitalHistory();
+                const availableCapital = totalCapital - totalCosts;
+                setTotalCapital(availableCapital);
+            } else {
+                const capitalRef = doc(collection(db, 'capital'));
+                await setDoc(capitalRef, {
+                    amount: amount,
+                    date: new Date(),
+                    note: note || 'تحديث من العمليات',
+                    type: type
+                });
+                await fetchCapitalHistory();
+            }
+        } catch (error) {
+            console.error("Error updating capital:", error);
+            throw error;
+        }
+    };
+
+    // دالة حساب الربح
+    const calculateProfit = (sellingPrice, costPrice, paymentMethod, isCommissionOnly) => {
+        const selling = Number(sellingPrice);
+        const cost = Number(costPrice);
+        const commission = paymentMethod === 'asiacell' ? selling * 0.10 : 0;
+        
+        if (isCommissionOnly) {
+            return commission;
+        }
+        
+        return selling - cost - commission;
     };
 
     // إضافة useEffect لجلب المنتجات المخصصة عند تحميل المكون
@@ -250,14 +305,15 @@ const Dashboard = ({ orders: initialOrders }) => {
     // إضافة دالة confirmDelete
     const confirmDelete = async () => {
         try {
-            if (deleteModal.type === 'capital') {
-                await deleteDoc(doc(db, 'capital', deleteModal.itemId));
-                await fetchCapitalHistory(); // إعادة تحميل سجل رأس المال
-            }
+            const capitalRef = doc(collection(db, 'capital'));
+            await deleteDoc(capitalRef);
+            await updateCapital(deleteModal.itemId, 'deletion', 'استرجاع من حذف طلب');
             setDeleteModal({ isOpen: false, itemId: null, type: null });
+            await fetchCapitalHistory();
+            showSuccessMessage('تم الحذف بنجاح');
         } catch (error) {
-            console.error("Error deleting item:", error);
-            alert('حدث خطأ أثناء الحذف');
+            console.error("Error in delete operation:", error);
+            showErrorMessage('حدث خطأ أثناء الحذف');
         }
     };
 
@@ -900,7 +956,7 @@ const Dashboard = ({ orders: initialOrders }) => {
     };
 
     // إضافة دالة updateAnalytics
-    const updateAnalytics = (ordersData) => {
+    const updateAnalytics = (updatedOrders) => {
         const analytics = {
             totalRevenue: 0,
             totalCost: 0,
@@ -910,17 +966,24 @@ const Dashboard = ({ orders: initialOrders }) => {
             revenueByType: {}
         };
 
-        ordersData.forEach(order => {
-            analytics.totalRevenue += Number(order.sellingPrice);
-            analytics.totalCost += Number(order.costPrice);
-            
-            // Update counts by type
+        updatedOrders.forEach(order => {
+            const revenue = Number(order.sellingPrice);
+            const cost = Number(order.costPrice);
+            const commission = order.paymentMethod === 'asiacell' ? revenue * 0.10 : 0;
+            const profit = revenue - cost - commission;
+
+            analytics.totalRevenue += revenue;
+            analytics.totalCost += cost;
+            analytics.totalProfit += profit;
+
+            // تحديث التصنيف حسب النوع
             analytics.ordersByType[order.serviceType] = (analytics.ordersByType[order.serviceType] || 0) + 1;
-            analytics.revenueByType[order.serviceType] = (analytics.revenueByType[order.serviceType] || 0) + Number(order.sellingPrice);
+            analytics.revenueByType[order.serviceType] = (analytics.revenueByType[order.serviceType] || 0) + revenue;
         });
 
-        analytics.totalProfit = analytics.totalRevenue - analytics.totalCost;
-        analytics.profitMargin = (analytics.totalProfit / analytics.totalRevenue) * 100;
+        if (analytics.totalRevenue > 0) {
+            analytics.profitMargin = (analytics.totalProfit / analytics.totalRevenue) * 100;
+        }
 
         setAnalytics(analytics);
     };
@@ -1142,7 +1205,7 @@ const Dashboard = ({ orders: initialOrders }) => {
                     <RevenueChart orders={orders} />
                     <OrderTypesChart orders={orders} />
                 </div>
-                <OrderDetails orders={orders} />
+                <OrderDetails orders={orders} onUpdateOrder={handleOrderUpdate} />
             </div>
         );
     };
@@ -1233,26 +1296,49 @@ const Dashboard = ({ orders: initialOrders }) => {
                             </div>
 
                             <div className="form-group">
+                                <label>اسم العميل</label>
+                                <input
+                                    type="text"
+                                    name="customerName"
+                                    className="form-input"
+                                    value={formData.customerName}
+                                    onChange={handleInputChange}
+                                    placeholder="اسم العميل"
+                                    required
+                                />
+                            </div>
+
+                            <div className="form-group payment-section">
                                 <label>طريقة الدفع</label>
                                 <select
                                     name="paymentMethod"
                                     className="form-input"
                                     value={formData.paymentMethod}
                                     onChange={handleInputChange}
-                                    style={{
-                                        padding: '12px',
-                                        borderRadius: '8px',
-                                        border: '1.5px solid #e0e0fe',
-                                        fontSize: '1rem',
-                                        width: '100%',
-                                        backgroundColor: 'white'
-                                    }}
                                 >
                                     <option value="asiacell">آسياسيل</option>
                                     <option value="zain">زين كاش</option>
                                     <option value="rafidain">الرافدين</option>
                                     <option value="crypto">كربتو</option>
                                 </select>
+
+                                {formData.paymentMethod === 'asiacell' && (
+                                    <div className="commission-option">
+                                        <label className="checkbox-label">
+                                            <input
+                                                type="checkbox"
+                                                name="commissionOnly"
+                                                checked={formData.commissionOnly}
+                                                onChange={(e) => setFormData({
+                                                    ...formData,
+                                                    commissionOnly: e.target.checked,
+                                                    costPrice: e.target.checked ? '0' : formData.costPrice
+                                                })}
+                                            />
+                                            <span>عمولة فقط (10%)</span>
+                                        </label>
+                                    </div>
+                                )}
                             </div>
 
                             <button type="submit" className="submit-btn">
@@ -1284,6 +1370,39 @@ const Dashboard = ({ orders: initialOrders }) => {
         }
     };
 
+    // إضافة مراقب للتغييرات في الطلبات
+    useEffect(() => {
+        const ordersQuery = query(collection(db, 'orders'));
+        
+        const unsubscribe = onSnapshot(ordersQuery, (snapshot) => {
+            const updatedOrders = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            setOrders(updatedOrders);
+            updateAnalytics(updatedOrders);
+            updateCapital(updatedOrders);
+        }, (error) => {
+            console.error("Error listening to orders:", error);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    // إضافة دالة تحديث الطلبات
+    const handleOrderUpdate = (orderId, updatedData) => {
+        setOrders(prevOrders => {
+            if (!updatedData) {
+                // إذا كان updatedData هو null، فهذا يعني حذف الطلب
+                return prevOrders.filter(order => order.id !== orderId);
+            }
+            // تحديث الطلب
+            return prevOrders.map(order => 
+                order.id === orderId ? { ...order, ...updatedData } : order
+            );
+        });
+    };
+
     return (
         <div className="dashboard">
             <nav className="dashboard-nav">
@@ -1291,7 +1410,7 @@ const Dashboard = ({ orders: initialOrders }) => {
                     <button
                         key={key}
                         className={`nav-btn ${activeSection === key ? 'active' : ''}`}
-                        onClick={() => setActiveSection(key)}
+                        onClick={() => handleSectionClick(key)}
                         title={description}
                     >
                         <span 

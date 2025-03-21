@@ -3222,3 +3222,65 @@ textarea.form-input {
         font-size: 0.95rem;
     }
 }
+
+/* Payment Section Styles */
+.payment-section {
+    position: relative;
+}
+
+.commission-option {
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: rgba(107, 75, 163, 0.05);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.9rem;
+    color: var(--main-purple);
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--main-purple);
+    cursor: pointer;
+}
+
+@media screen and (max-width: 768px) {
+    .commission-option {
+        padding: 6px 10px;
+    }
+
+    .checkbox-label {
+        font-size: 0.85rem;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+    }
+}
+
+.nav-btn[title="إدارة النظام والإعدادات"] {
+    background: linear-gradient(145deg, #6b4ba3, #9b6bf6);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 15px rgba(107, 75, 163, 0.2);
+}
+
+.nav-btn[title="إدارة النظام والإعدادات"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(107, 75, 163, 0.3);
+}
+
+.nav-btn[title="إدارة النظام والإعدادات"] .nav-icon {
+    filter: brightness(1.2);
+}
