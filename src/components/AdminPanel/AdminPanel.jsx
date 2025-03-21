@@ -47,6 +47,21 @@ const AdminPanel = () => {
         }
     };
 
+    const formatDate = (timestamp) => {
+        try {
+            if (timestamp?.seconds) {
+                return new Date(timestamp.seconds * 1000).toLocaleDateString();
+            }
+            if (timestamp instanceof Date) {
+                return timestamp.toLocaleDateString();
+            }
+            return '-';
+        } catch (error) {
+            console.error("Error formatting date:", error);
+            return '-';
+        }
+    };
+
     const handleDelete = async (id, collectionName) => {
         try {
             if (window.confirm('هل أنت متأكد من حذف هذا العنصر؟')) {
@@ -57,8 +72,6 @@ const AdminPanel = () => {
                 if (!docSnap.exists()) {
                     throw new Error('العنصر غير موجود');
                 }
-
-                const itemData = docSnap.data();
 
                 // حذف العنصر
                 await deleteDoc(docRef);
@@ -78,6 +91,9 @@ const AdminPanel = () => {
 
                 // إظهار رسالة نجاح
                 showSuccessMessage('تم الحذف بنجاح');
+                
+                // تحديث البيانات مباشرة
+                await fetchData();
             }
         } catch (error) {
             console.error('Error deleting document:', error);
@@ -334,21 +350,28 @@ const AdminPanel = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {data.capital.map(item => (
-                                        <tr key={item.id}>
-                                            <td>{Number(item.amount).toLocaleString()} د.ع</td>
-                                            <td>{item.note || '-'}</td>
-                                            <td>{item.date ? new Date(item.date.seconds * 1000).toLocaleDateString() : '-'}</td>
-                                            <td>
-                                                <button 
-                                                    onClick={() => handleDelete(item.id, 'capital')}
-                                                    className="delete-btn"
-                                                >
-                                                    حذف
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {data.capital.map(item => {
+                                        // التحقق من وجود البيانات وتنسيقها
+                                        const amount = typeof item.amount === 'number' ? 
+                                            item.amount.toLocaleString() : 
+                                            Number(item.amount)?.toLocaleString() || '0';
+
+                                        return (
+                                            <tr key={item.id}>
+                                                <td>{amount} د.ع</td>
+                                                <td>{item.note || '-'}</td>
+                                                <td>{formatDate(item.date)}</td>
+                                                <td>
+                                                    <button 
+                                                        onClick={() => handleDelete(item.id, 'capital')}
+                                                        className="delete-btn"
+                                                    >
+                                                        حذف
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
