@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../../firebase/config';
-import { collection, addDoc, getDocs, deleteDoc, doc, query, where, orderBy, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, query, where, orderBy, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
 import RevenueChart from '../Charts/RevenueChart';
 import OrderTypesChart from '../Charts/OrderTypesChart';
 import OrderDetails from '../Charts/OrderDetails';
