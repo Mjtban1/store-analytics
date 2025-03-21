@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../../firebase/config';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where, orderBy, onSnapshot, setDoc } from 'firebase/firestore';
 import RevenueChart from '../Charts/RevenueChart';
@@ -175,34 +175,29 @@ const Dashboard = ({ orders: initialOrders }) => {
     };
 
     // دالة تحديث رأس المال المحسنة
-    const updateCapital = async (amount, type = 'auto', note = '') => {
+    const updateCapital = useCallback(async (amount, type = 'deduction', note = '') => {
         try {
-            if (type === 'auto') {
-                const totalCosts = amount.reduce((sum, order) => {
-                    if (!order.isCommissionOnly) {
-                        return sum + Number(order.costPrice);
-                    }
-                    return sum;
-                }, 0);
-
-                await fetchCapitalHistory();
-                const availableCapital = totalCapital - totalCosts;
-                setTotalCapital(availableCapital);
-            } else {
-                const capitalRef = doc(collection(db, 'capital'));
-                await setDoc(capitalRef, {
-                    amount: amount,
-                    date: new Date(),
-                    note: note || 'تحديث من العمليات',
-                    type: type
-                });
-                await fetchCapitalHistory();
+            // تحويل المبلغ إلى رقم للتأكد من صحة البيانات
+            const numericAmount = Number(amount);
+            if (isNaN(numericAmount)) {
+                throw new Error('المبلغ غير صالح');
             }
+
+            const capitalRef = doc(collection(db, 'capital'));
+            await setDoc(capitalRef, {
+                amount: numericAmount,
+                date: new Date(),
+                note: note || 'تحديث تلقائي',
+                type: type
+            });
+
+            await fetchCapitalHistory();
+            calculateTotalCapital(); // إعادة حساب الإجمالي
         } catch (error) {
             console.error("Error updating capital:", error);
-            throw error;
+            showErrorMessage('حدث خطأ في تحديث رأس المال');
         }
-    };
+    }, []);
 
     // دالة حساب الربح
     const calculateProfit = (sellingPrice, costPrice, paymentMethod, isCommissionOnly) => {
@@ -293,13 +288,21 @@ const Dashboard = ({ orders: initialOrders }) => {
         }
     };
 
-    // تعديل دالة handleDeleteCapital
+    // تحسين دالة حذف رأس المال
     const handleDeleteCapital = async (id) => {
-        setDeleteModal({
-            isOpen: true,
-            itemId: id,
-            type: 'capital' // إضافة نوع العنصر المراد حذفه
-        });
+        try {
+            if (window.confirm('هل أنت متأكد من حذف هذا العنصر؟')) {
+                const docRef = doc(db, 'capital', id);
+                await deleteDoc(docRef);
+                
+                await fetchCapitalHistory();
+                calculateTotalCapital(); // إعادة حساب الإجمالي بعد الحذف
+                showSuccessMessage('تم حذف العنصر بنجاح');
+            }
+        } catch (error) {
+            console.error("Error deleting capital:", error);
+            showErrorMessage('حدث خطأ في حذف العنصر');
+        }
     };
 
     // إضافة دالة confirmDelete
@@ -316,6 +319,23 @@ const Dashboard = ({ orders: initialOrders }) => {
             showErrorMessage('حدث خطأ أثناء الحذف');
         }
     };
+
+    // تحسين دالة حساب إجمالي رأس المال
+    const calculateTotalCapital = useCallback(() => {
+        if (!capitalHistory || !Array.isArray(capitalHistory)) {
+            setTotalCapital(0);
+            return;
+        }
+
+        const total = capitalHistory.reduce((sum, item) => {
+            const amount = Number(item.amount);
+            if (isNaN(amount)) return sum;
+            
+            return item.type === 'addition' ? sum + amount : sum - amount;
+        }, 0);
+
+        setTotalCapital(total);
+    }, [capitalHistory]);
 
     // تعديل مكون DeleteConfirmModal
     const DeleteConfirmModal = () => {
